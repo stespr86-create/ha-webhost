@@ -114,11 +114,13 @@ sichern"**-Button im Panel ein Backup ziehen.
 
 ## Sicherheitshinweise
 
-- Der Git-Access-Token wird derzeit **unverschlüsselt** in der SQLite-DB
-  (`/data/webhost.db`) gespeichert. `/data` ist nur für das Add-on selbst
-  und Root auf dem Host lesbar – für ein Einzelnutzer-Setup akzeptabel,
-  für produktiven/mehrbenutzer Einsatz wäre Verschlüsselung (z.B. Fernet mit
-  Schlüssel aus HA Supervisor Secrets) ein sinnvoller nächster Schritt.
+- Der Git-Access-Token wird **verschlüsselt** in der SQLite-DB
+  (`/data/webhost.db`) gespeichert (Fernet, `cryptography`-Paket). Der
+  Schlüssel liegt unter `/data/secret.key` (0600, beim ersten Start
+  generiert) – `/data` bleibt damit weiterhin die Vertrauensgrenze
+  (nur Add-on selbst + Root auf dem Host lesbar), aber ein reines
+  Auslesen der DB-Datei allein (z.B. versehentlich geteilt, aus einem
+  Backup ohne `secret.key`) legt den Token nicht mehr offen.
   Über die API wird der Token nie zurückgegeben (`SitePublic`-Response-Model
   ohne `git_token`-Feld) – auch nicht an den authentifizierten Admin selbst.
   Der Token wird beim Klonen/Pullen per `-c http.extraHeader=...` nur für

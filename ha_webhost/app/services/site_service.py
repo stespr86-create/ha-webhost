@@ -4,6 +4,7 @@ from typing import Optional
 
 from sqlmodel import Session, select
 
+from core import crypto
 from core.config import SITES_DIR
 from core.security import validate_site_name
 from models.site import Site, SiteStatus, SourceType
@@ -63,7 +64,7 @@ def create_site_from_git(
         source_type=SourceType.git,
         git_url=git_url,
         git_branch=branch or "main",
-        git_token=token,
+        git_token=crypto.encrypt(token) if token else None,
         status=SiteStatus.deploying,
     )
     session.add(site)
@@ -100,7 +101,8 @@ def redeploy(session: Session, name: str) -> Site:
     session.commit()
 
     try:
-        git_service.clone_or_pull(site.git_url, site.git_branch, site.git_token, SITES_DIR / name)
+        token = crypto.decrypt(site.git_token) if site.git_token else None
+        git_service.clone_or_pull(site.git_url, site.git_branch, token, SITES_DIR / name)
         site.status = SiteStatus.active
         site.last_error = None
     except Exception as exc:

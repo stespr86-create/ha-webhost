@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.5
+
+- Sicherheitsverbesserung: Git-Access-Token wird jetzt verschlüsselt in
+  der SQLite-DB gespeichert (Fernet, Schlüssel unter `/data/secret.key`,
+  0600, beim ersten Start generiert). Verifiziert per direktem
+  SQLite-Zugriff, dass nur noch Ciphertext in der DB steht, und dass
+  Redeploy den Token korrekt entschlüsselt und weiterverwendet.
+- Build auf amd64 (Zielarchitektur i3-Notebook) explizit getestet, da
+  `cryptography` ein kompiliertes Paket ist – Wheel-Installation ohne
+  Kompilierung bestätigt (~12s, kein Rust/Build-Toolchain nötig).
+
 ## 0.1.4
 
 - Neu: "📦 Alle Sites sichern"-Button im Panel — lädt alle aktiven Sites

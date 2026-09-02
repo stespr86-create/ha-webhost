@@ -9,6 +9,7 @@ from sqlmodel import Session
 from starlette.background import BackgroundTask
 
 from core.config import MAX_UPLOAD_BYTES, SITES_DIR
+from core.crypto import DecryptionError
 from core.db import get_session
 from core.security import InvalidSiteName, PathTraversal, UnsafeArchive
 from models.site import SitePublic, SiteStatus
@@ -98,7 +99,7 @@ def redeploy(name: str, session: Session = Depends(get_session)):
         return site_service.redeploy(session, name)
     except ValueError as exc:
         raise HTTPException(404, str(exc)) from exc
-    except GitError as exc:
+    except (GitError, DecryptionError) as exc:
         raise HTTPException(422, str(exc)) from exc
 
 
