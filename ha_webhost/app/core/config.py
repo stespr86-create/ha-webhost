@@ -13,7 +13,7 @@ CADDY_INGRESS_PORT = 8000
 
 # 3-32 Zeichen, nur Kleinbuchstaben/Ziffern/Bindestrich, kein Start/Ende mit '-'
 SITE_NAME_PATTERN = r"^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$"
-RESERVED_NAMES = {"api", "static", "admin", "assets", "healthz"}
+RESERVED_NAMES = {"api", "static", "admin", "assets", "healthz", "backup"}
 
 MAX_UPLOAD_BYTES = 200 * 1024 * 1024  # 200 MB
 

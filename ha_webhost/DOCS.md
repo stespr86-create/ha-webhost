@@ -14,6 +14,8 @@ im HA-Ingress-Panel.
   Gitea, per HTTPS-URL + optionalem Access Token)
 - Redeploy per Knopfdruck (git pull)
 - Einfacher Datei-Browser/-Editor über die API (`/api/files/...`)
+- Manuelles Backup aller Sites als ein ZIP-Download ("📦 Alle Sites
+  sichern"-Button im Panel, `.git`-Verzeichnisse werden ausgeschlossen)
 - Reverse Proxy (Caddy) inkl. SPA-Fallback (`try_files … /index.html`)
 - Läuft komplett ohne Docker-Socket-Zugriff → kein erhöhtes Sicherheitsrisiko
   für den Host
@@ -65,24 +67,44 @@ Alternativ für lokale Entwicklung ganz ohne Git-Hosting: Projektordner nach
 `/addons/ha_webhost` auf dem HA-Host kopieren (z.B. via Samba-/SSH-Add-on) –
 lokale Add-ons werden vom Supervisor automatisch erkannt.
 
-## ⚠️ Deinstallieren löscht `/data` vollständig
+## ⚠️ Update liefert manchmal alten Code aus – Lösung ohne Datenverlust
 
-Getestet und bestätigt: Ein **Deinstallieren** des Add-ons über HA entfernt
-`/data` (also alle Sites, die SQLite-DB und deren Inhalte) restlos –
-"/data bleibt bei den meisten HA-Add-ons erhalten" trifft auf dieses Setup
-**nicht** zu. Es gibt aktuell keine automatische Sicherung davor (siehe
-Roadmap Phase 4 – Backup-System).
+Beobachtetes Problem: Nach einem Push + Update/Rebuild zeigt HA zwar
+korrekt die neue Version und den neuen Changelog-Text an, der tatsächlich
+laufende Container liefert aber weiterhin den **alten** Code aus. Ursache
+ist vermutlich ein nicht sauber aktualisierter lokaler Git-Checkout des
+Repositories auf dem Supervisor-Host.
 
-**Vor jedem Deinstallieren/Neuinstallieren:** manuell ein Backup der
-gehosteten Sites ziehen (z.B. Dateien über den Datei-Manager einzeln
-sichern, oder `/data` direkt über ein Samba-/SSH-Add-on kopieren), sofern
-die Inhalte nicht ohnehin per Git deployt und damit extern gesichert sind.
+**Lösung (kein Datenverlust, `/data` bleibt unangetastet):** Supervisor
+bietet dafür einen dedizierten Repository-Repair-Endpunkt, der einen
+frischen Git-Checkout erzwingt, ohne das Add-on zu deinstallieren:
 
-Grund für ein Deinstallieren/Neuinstallieren kann z.B. sein: Der Supervisor
-liefert nach einem Update/Rebuild manchmal weiterhin eine gecachte alte
-Version aus (Version/Changelog-Anzeige aktualisiert sich zwar korrekt, der
-tatsächlich laufende Container aber nicht) – ein sauberes Deinstallieren +
-Neuinstallieren erzwingt einen frischen Git-Klon und Build.
+```js
+// Im Browser auf einer beliebigen HA-Seite in der Konsole ausfuehren
+// (oder ueber javascript_exec einer Browser-Automatisierung):
+const ha = document.querySelector("home-assistant");
+await ha.hass.callWS({
+  type: "supervisor/api",
+  endpoint: "/store/repositories/38ef203b/repair",  // 38ef203b = Repo-Slug
+  method: "post",
+});
+// Danach normal ueber die UI oder per WS "update" auf das Add-on anwenden.
+```
+
+Quelle/Hintergrund: `Repository.reset()` in
+[supervisor/store/repository.py](https://github.com/home-assistant/supervisor/blob/main/supervisor/store/repository.py),
+aufgerufen über `POST /store/repositories/{repository}/repair` in
+[supervisor/api/store.py](https://github.com/home-assistant/supervisor/blob/main/supervisor/api/store.py) -
+siehe auch [DeepWiki: Repository Management](https://deepwiki.com/home-assistant/supervisor/4.1-repository-management).
+Der Repo-Slug steht in den Add-on-Infos (`repository`-Feld) oder in der
+Repository-Liste (`GET /store/repositories`).
+
+**Falls das nicht hilft:** Deinstallieren + Neuinstallieren erzwingt
+garantiert einen kompletten Neuklon, **löscht dabei aber `/data` restlos**
+(getestet, kein automatischer Datenerhalt bei diesem Setup) – vorher
+unbedingt über den **"📦 Alle Sites sichern"**-Button im Panel ein Backup
+ziehen (siehe unten), sofern die Inhalte nicht ohnehin per Git deployt und
+damit extern gesichert sind.
 
 ## Sicherheitshinweise
 
@@ -93,6 +115,13 @@ Neuinstallieren erzwingt einen frischen Git-Klon und Build.
   Schlüssel aus HA Supervisor Secrets) ein sinnvoller nächster Schritt.
   Über die API wird der Token nie zurückgegeben (`SitePublic`-Response-Model
   ohne `git_token`-Feld) – auch nicht an den authentifizierten Admin selbst.
+  Der Token wird beim Klonen/Pullen per `-c http.extraHeader=...` nur für
+  den jeweiligen Git-Aufruf übergeben und landet dadurch **nicht** in
+  `.git/config` der Site (wichtig auch fürs Backup, da sonst jeder Export
+  den Token mit hätte).
+- Datei-/Ordnernamen werden im Datei-Manager konsequent escaped
+  (`escapeHtml()` im Frontend) – verhindert gespeicherte XSS über
+  bösartig benannte Dateien in Uploads oder Git-Repos.
 - Der optionale Port 8000 (siehe `config.yaml` → `ports`) veröffentlicht
   gehostete Sites **ohne** HA-Login direkt im Netzwerk, falls aktiviert.
   Nur aktivieren, wenn das gewünscht ist.

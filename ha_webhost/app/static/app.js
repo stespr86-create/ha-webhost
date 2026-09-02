@@ -3,6 +3,7 @@
 
 const sitesBody = document.getElementById("sites-body");
 const statusMessage = document.getElementById("status-message");
+const backupAllLink = document.getElementById("backup-all-link");
 
 const HTML_ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 
@@ -18,6 +19,10 @@ function showStatus(message, isError = false) {
 async function loadSites() {
 	const res = await fetch("api/sites");
 	const sites = await res.json();
+
+	const hasActiveSite = sites.some((site) => site.status === "active");
+	backupAllLink.classList.toggle("disabled", !hasActiveSite);
+	backupAllLink.setAttribute("aria-disabled", String(!hasActiveSite));
 
 	if (sites.length === 0) {
 		sitesBody.innerHTML = '<tr><td colspan="5">Noch keine Sites vorhanden.</td></tr>';
@@ -109,6 +114,12 @@ document.getElementById("git-form").addEventListener("submit", async (event) => 
 	} else {
 		const err = await res.json();
 		showStatus(`Fehler: ${err.detail}`, true);
+	}
+});
+
+backupAllLink.addEventListener("click", (event) => {
+	if (backupAllLink.getAttribute("aria-disabled") === "true") {
+		event.preventDefault();
 	}
 });
 

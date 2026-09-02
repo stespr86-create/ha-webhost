@@ -1,13 +1,18 @@
+import tempfile
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from sqlmodel import Session
+from starlette.background import BackgroundTask
 
-from core.config import MAX_UPLOAD_BYTES
+from core.config import MAX_UPLOAD_BYTES, SITES_DIR
 from core.db import get_session
 from core.security import InvalidSiteName, PathTraversal, UnsafeArchive
-from models.site import SitePublic
-from services import site_service
+from models.site import SitePublic, SiteStatus
+from services import site_service, zip_service
 from services.git_service import GitError
 
 router = APIRouter(prefix="/api/sites", tags=["sites"])
@@ -16,6 +21,28 @@ router = APIRouter(prefix="/api/sites", tags=["sites"])
 @router.get("", response_model=list[SitePublic])
 def list_sites(session: Session = Depends(get_session)):
     return site_service.list_sites(session)
+
+
+@router.get("/backup")
+def backup_all_sites(session: Session = Depends(get_session)):
+    """Alle aktiven Sites gebündelt als ein ZIP herunterladen (manuelles
+    Backup - .git-Verzeichnisse werden ausgeschlossen, siehe zip_service)."""
+    names = [s.name for s in site_service.list_sites(session) if s.status == SiteStatus.active]
+    if not names:
+        raise HTTPException(404, "Keine aktiven Sites zum Sichern vorhanden.")
+
+    tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
+    tmp.close()
+    output_path = Path(tmp.name)
+    zip_service.zip_all_sites(names, SITES_DIR, output_path)
+
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    return FileResponse(
+        output_path,
+        media_type="application/zip",
+        filename=f"ha-webhost-backup-{timestamp}.zip",
+        background=BackgroundTask(output_path.unlink),
+    )
 
 
 @router.get("/{name}", response_model=SitePublic)

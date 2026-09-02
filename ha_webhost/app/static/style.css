@@ -56,6 +56,39 @@ main {
 	font-size: 1.1rem;
 }
 
+.card-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+}
+
+.card-header h2 {
+	margin: 0;
+}
+
+.button-link {
+	display: inline-block;
+	padding: 0.4rem 0.8rem;
+	border-radius: 4px;
+	background: var(--accent);
+	color: white;
+	text-decoration: none;
+	font-size: 0.85rem;
+	white-space: nowrap;
+}
+
+.button-link:hover {
+	opacity: 0.9;
+}
+
+.button-link.disabled {
+	background: var(--border);
+	color: var(--muted);
+	cursor: not-allowed;
+	pointer-events: none;
+}
+
 table {
 	width: 100%;
 	border-collapse: collapse;

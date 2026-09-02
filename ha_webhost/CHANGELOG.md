@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.4
+
+- Neu: "📦 Alle Sites sichern"-Button im Panel — lädt alle aktiven Sites
+  gebündelt als ein ZIP herunter (`.git`-Verzeichnisse ausgeschlossen).
+- Sicherheitsfix: Git-Access-Token wurde beim Klonen in die Remote-URL
+  eingebettet und landete dadurch dauerhaft im Klartext in `.git/config`
+  der jeweiligen Site (lesbar über den Datei-Manager, hätte auch in
+  Backups mit exportiert). Token wird jetzt nur noch per
+  `-c http.extraHeader=...` für den einzelnen Git-Aufruf übergeben, nie
+  mehr persistiert.
+- Doku: Bekannte Lösung für "Update zeigt neue Version, liefert aber
+  alten Code" ohne Datenverlust (Supervisor-Repository-Repair-Endpunkt)
+  ergänzt.
+
 ## 0.1.3
 
 - Sicherheitsfix: Datei-/Ordnernamen im Datei-Manager wurden ungefiltert

@@ -25,3 +25,21 @@ def zip_directory(source_dir: Path, output_zip: Path) -> Path:
             if path.is_file():
                 zf.write(path, path.relative_to(source_dir))
     return output_zip
+
+
+def zip_all_sites(site_names: list[str], sites_dir: Path, output_zip: Path) -> Path:
+    """Packt alle Sites in ein gemeinsames Archiv, je Site in einem eigenen
+    Ordner. .git-Verzeichnisse werden ausgeschlossen (redeploybar per Git,
+    unnoetiger Ballast, und potenziell mit Zugangsdaten im Remote-Verlauf)."""
+    with zipfile.ZipFile(output_zip, "w", zipfile.ZIP_DEFLATED) as zf:
+        for name in site_names:
+            site_dir = sites_dir / name
+            if not site_dir.exists():
+                continue
+            for path in site_dir.rglob("*"):
+                if not path.is_file():
+                    continue
+                if ".git" in path.relative_to(site_dir).parts:
+                    continue
+                zf.write(path, Path(name) / path.relative_to(site_dir))
+    return output_zip
