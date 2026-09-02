@@ -65,6 +65,25 @@ Alternativ für lokale Entwicklung ganz ohne Git-Hosting: Projektordner nach
 `/addons/ha_webhost` auf dem HA-Host kopieren (z.B. via Samba-/SSH-Add-on) –
 lokale Add-ons werden vom Supervisor automatisch erkannt.
 
+## ⚠️ Deinstallieren löscht `/data` vollständig
+
+Getestet und bestätigt: Ein **Deinstallieren** des Add-ons über HA entfernt
+`/data` (also alle Sites, die SQLite-DB und deren Inhalte) restlos –
+"/data bleibt bei den meisten HA-Add-ons erhalten" trifft auf dieses Setup
+**nicht** zu. Es gibt aktuell keine automatische Sicherung davor (siehe
+Roadmap Phase 4 – Backup-System).
+
+**Vor jedem Deinstallieren/Neuinstallieren:** manuell ein Backup der
+gehosteten Sites ziehen (z.B. Dateien über den Datei-Manager einzeln
+sichern, oder `/data` direkt über ein Samba-/SSH-Add-on kopieren), sofern
+die Inhalte nicht ohnehin per Git deployt und damit extern gesichert sind.
+
+Grund für ein Deinstallieren/Neuinstallieren kann z.B. sein: Der Supervisor
+liefert nach einem Update/Rebuild manchmal weiterhin eine gecachte alte
+Version aus (Version/Changelog-Anzeige aktualisiert sich zwar korrekt, der
+tatsächlich laufende Container aber nicht) – ein sauberes Deinstallieren +
+Neuinstallieren erzwingt einen frischen Git-Klon und Build.
+
 ## Sicherheitshinweise
 
 - Der Git-Access-Token wird derzeit **unverschlüsselt** in der SQLite-DB
