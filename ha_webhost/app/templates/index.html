@@ -71,6 +71,44 @@
 		<div id="status-message" class="status" role="status"></div>
 	</main>
 
+	<div id="file-manager-overlay" class="fm-overlay" hidden>
+		<div class="fm-modal">
+			<div class="fm-header">
+				<h2>Dateien: <span id="fm-site-name"></span></h2>
+				<button type="button" id="fm-close" class="fm-close" aria-label="Schließen">&times;</button>
+			</div>
+
+			<div class="fm-toolbar">
+				<button type="button" id="fm-up" disabled>⬆ Übergeordneter Ordner</button>
+				<span id="fm-breadcrumb" class="fm-breadcrumb">/</span>
+			</div>
+
+			<div class="fm-toolbar">
+				<label class="fm-upload-label">
+					📤 Datei hochladen
+					<input type="file" id="fm-upload-input" hidden />
+				</label>
+				<form id="fm-mkdir-form" class="fm-mkdir-form">
+					<input type="text" id="fm-mkdir-name" placeholder="Neuer Ordnername" />
+					<button type="submit">📁 Anlegen</button>
+				</form>
+			</div>
+
+			<ul id="fm-file-list" class="fm-file-list"></ul>
+
+			<div id="fm-editor" class="fm-editor" hidden>
+				<div class="fm-editor-header">
+					<strong id="fm-editor-filename"></strong>
+					<div>
+						<button type="button" id="fm-editor-save">Speichern</button>
+						<button type="button" id="fm-editor-cancel">Schließen</button>
+					</div>
+				</div>
+				<textarea id="fm-editor-content" spellcheck="false"></textarea>
+			</div>
+		</div>
+	</div>
+
 	<script src="static/app.js"></script>
 </body>
 </html>

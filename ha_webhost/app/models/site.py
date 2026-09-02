@@ -32,3 +32,24 @@ class Site(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=_utcnow)
     last_deploy_at: Optional[datetime] = None
     last_error: Optional[str] = None
+
+
+class SitePublic(SQLModel):
+    """API-Response-Form von Site - lässt git_token bewusst weg.
+
+    Der Access-Token darf niemals über die API zurückgegeben werden, auch
+    nicht an den authentifizierten Admin selbst: er wird einmalig beim
+    Anlegen der Site eingegeben und danach nur noch intern fuer
+    Git-Operationen verwendet.
+    """
+
+    id: Optional[int] = None
+    name: str
+    source_type: SourceType
+    git_url: Optional[str] = None
+    git_branch: str = "main"
+    status: SiteStatus = SiteStatus.active
+    created_at: datetime
+    updated_at: datetime
+    last_deploy_at: Optional[datetime] = None
+    last_error: Optional[str] = None

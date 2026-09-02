@@ -72,6 +72,8 @@ lokale Add-ons werden vom Supervisor automatisch erkannt.
   und Root auf dem Host lesbar – für ein Einzelnutzer-Setup akzeptabel,
   für produktiven/mehrbenutzer Einsatz wäre Verschlüsselung (z.B. Fernet mit
   Schlüssel aus HA Supervisor Secrets) ein sinnvoller nächster Schritt.
+  Über die API wird der Token nie zurückgegeben (`SitePublic`-Response-Model
+  ohne `git_token`-Feld) – auch nicht an den authentifizierten Admin selbst.
 - Der optionale Port 8000 (siehe `config.yaml` → `ports`) veröffentlicht
   gehostete Sites **ohne** HA-Login direkt im Netzwerk, falls aktiviert.
   Nur aktivieren, wenn das gewünscht ist.
@@ -80,10 +82,18 @@ lokale Add-ons werden vom Supervisor automatisch erkannt.
 
 ## Roadmap (spätere Phasen)
 
-1. **Phase 2**: Python-App-Hosting (Flask/FastAPI/Django) über je einen
-   eigenen Container pro App – erfordert `docker_api: true` im Add-on, wird
-   als klar gekennzeichnete, optionale Erweiterung mit eigener
-   Bedrohungsanalyse eingeführt.
-2. **Phase 3**: PHP-Hosting, SQLite-Datenbank-Verwaltung pro App.
+Reihenfolge auf Wunsch angepasst: PHP-Hosting vorgezogen, Python-Hosting
+zurückgestellt. Beide brauchen aber gleichermaßen einen eigenen
+Laufzeit-Container pro App und damit `docker_api: true` (siehe
+Sicherheitshinweis oben) – das Vorziehen ändert nichts an diesem Risiko,
+nur an der Reihenfolge, in der es angegangen wird.
+
+1. **Phase 2**: PHP-Hosting (Apache/Nginx + PHP-FPM) über je einen eigenen
+   Container pro App, SQLite-Datenbank-Verwaltung pro App – erfordert
+   `docker_api: true` im Add-on, wird als klar gekennzeichnete, optionale
+   Erweiterung mit eigener Bedrohungsanalyse eingeführt.
+2. **Phase 3**: Python-App-Hosting (Flask/FastAPI/Django) über je einen
+   eigenen Container pro App – gleiche Architektur/Risiko wie Phase 2, nur
+   für eine andere Laufzeitumgebung.
 3. **Phase 4**: MariaDB/PostgreSQL-Provisioning, automatische
    Backup-Zeitpläne, Monitoring (CPU/RAM/Storage pro App), Live-Log-Viewer.

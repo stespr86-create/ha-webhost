@@ -28,6 +28,7 @@ async function loadSites() {
 					<td><span class="badge badge-${site.status}">${site.status}</span></td>
 					<td><a href="${url}" target="_blank" rel="noopener">${url}</a></td>
 					<td>
+						<button data-action="files" data-name="${site.name}">📂 Dateien</button>
 						${site.source_type === "git" ? `<button data-action="redeploy" data-name="${site.name}">Redeploy</button>` : ""}
 						<button data-action="delete" data-name="${site.name}" class="danger">Löschen</button>
 					</td>
@@ -67,6 +68,10 @@ sitesBody.addEventListener("click", async (event) => {
 		}
 		loadSites();
 	}
+
+	if (action === "files") {
+		openFileManager(name);
+	}
 });
 
 document.getElementById("upload-form").addEventListener("submit", async (event) => {
@@ -103,3 +108,193 @@ document.getElementById("git-form").addEventListener("submit", async (event) => 
 
 loadSites();
 setInterval(loadSites, 10000);
+
+// --- Datei-Manager ---
+
+const fm = {
+	siteName: null,
+	path: "",
+};
+
+const fmOverlay = document.getElementById("file-manager-overlay");
+const fmSiteNameEl = document.getElementById("fm-site-name");
+const fmBreadcrumb = document.getElementById("fm-breadcrumb");
+const fmUpButton = document.getElementById("fm-up");
+const fmFileList = document.getElementById("fm-file-list");
+const fmUploadInput = document.getElementById("fm-upload-input");
+const fmMkdirForm = document.getElementById("fm-mkdir-form");
+const fmMkdirName = document.getElementById("fm-mkdir-name");
+const fmEditor = document.getElementById("fm-editor");
+const fmEditorFilename = document.getElementById("fm-editor-filename");
+const fmEditorContent = document.getElementById("fm-editor-content");
+
+function fmJoin(path, name) {
+	return path ? `${path}/${name}` : name;
+}
+
+function fmParent(path) {
+	const parts = path.split("/").filter(Boolean);
+	parts.pop();
+	return parts.join("/");
+}
+
+async function openFileManager(siteName) {
+	fm.siteName = siteName;
+	fm.path = "";
+	fmSiteNameEl.textContent = siteName;
+	fmOverlay.hidden = false;
+	fmEditor.hidden = true;
+	await fmLoadList();
+}
+
+function closeFileManager() {
+	fmOverlay.hidden = true;
+	fm.siteName = null;
+}
+
+function fmRenderBreadcrumb() {
+	fmBreadcrumb.textContent = "/" + fm.path;
+	fmUpButton.disabled = fm.path === "";
+}
+
+async function fmLoadList() {
+	const res = await fetch(`api/files/${fm.siteName}?path=${encodeURIComponent(fm.path)}`);
+	if (!res.ok) {
+		const err = await res.json();
+		showStatus(`Fehler: ${err.detail}`, true);
+		return;
+	}
+	const data = await res.json();
+	fmRenderBreadcrumb();
+
+	if (data.entries.length === 0) {
+		fmFileList.innerHTML = '<li class="fm-empty">Ordner ist leer.</li>';
+		return;
+	}
+
+	fmFileList.innerHTML = data.entries
+		.map((entry) => {
+			const icon = entry.is_dir ? "📁" : "📄";
+			const sizeLabel = entry.is_dir ? "" : `<span class="fm-size">${entry.size} B</span>`;
+			return `
+				<li class="fm-entry" data-name="${entry.name}" data-is-dir="${entry.is_dir}">
+					<span class="fm-entry-name">${icon} ${entry.name}</span>
+					${sizeLabel}
+					<button type="button" data-fm-action="delete" data-fm-name="${entry.name}" class="danger fm-delete">🗑</button>
+				</li>
+			`;
+		})
+		.join("");
+}
+
+fmFileList.addEventListener("click", async (event) => {
+	const deleteButton = event.target.closest("button[data-fm-action='delete']");
+	if (deleteButton) {
+		event.stopPropagation();
+		const entryPath = fmJoin(fm.path, deleteButton.dataset.fmName);
+		if (!confirm(`"${deleteButton.dataset.fmName}" wirklich löschen?`)) return;
+		const res = await fetch(`api/files/${fm.siteName}?path=${encodeURIComponent(entryPath)}`, {
+			method: "DELETE",
+		});
+		if (res.ok) {
+			await fmLoadList();
+		} else {
+			const err = await res.json();
+			showStatus(`Fehler: ${err.detail}`, true);
+		}
+		return;
+	}
+
+	const entry = event.target.closest("li.fm-entry");
+	if (!entry) return;
+
+	const { name, isDir } = entry.dataset;
+	const entryPath = fmJoin(fm.path, name);
+
+	if (entry.dataset.isDir === "true") {
+		fm.path = entryPath;
+		await fmLoadList();
+	} else {
+		await fmOpenFile(entryPath);
+	}
+});
+
+fmUpButton.addEventListener("click", async () => {
+	fm.path = fmParent(fm.path);
+	await fmLoadList();
+});
+
+fmMkdirForm.addEventListener("submit", async (event) => {
+	event.preventDefault();
+	const name = fmMkdirName.value.trim();
+	if (!name) return;
+	const res = await fetch(`api/files/${fm.siteName}/mkdir?path=${encodeURIComponent(fmJoin(fm.path, name))}`, {
+		method: "POST",
+	});
+	if (res.ok) {
+		fmMkdirName.value = "";
+		await fmLoadList();
+	} else {
+		const err = await res.json();
+		showStatus(`Fehler: ${err.detail}`, true);
+	}
+});
+
+fmUploadInput.addEventListener("change", async () => {
+	const file = fmUploadInput.files[0];
+	if (!file) return;
+
+	const formData = new FormData();
+	formData.append("file", file);
+
+	const res = await fetch(`api/files/${fm.siteName}/upload?path=${encodeURIComponent(fm.path)}`, {
+		method: "POST",
+		body: formData,
+	});
+	fmUploadInput.value = "";
+	if (res.ok) {
+		await fmLoadList();
+	} else {
+		const err = await res.json();
+		showStatus(`Fehler: ${err.detail}`, true);
+	}
+});
+
+async function fmOpenFile(path) {
+	const res = await fetch(`api/files/${fm.siteName}/content?path=${encodeURIComponent(path)}`);
+	if (!res.ok) {
+		const err = await res.json();
+		showStatus(`Fehler: ${err.detail}`, true);
+		return;
+	}
+	const data = await res.json();
+	fmEditor.dataset.path = path;
+	fmEditorFilename.textContent = path;
+	fmEditorContent.value = data.content;
+	fmEditor.hidden = false;
+}
+
+document.getElementById("fm-editor-save").addEventListener("click", async () => {
+	const path = fmEditor.dataset.path;
+	const res = await fetch(`api/files/${fm.siteName}/content?path=${encodeURIComponent(path)}`, {
+		method: "PUT",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ content: fmEditorContent.value }),
+	});
+	if (res.ok) {
+		showStatus(`"${path}" gespeichert.`);
+		fmEditor.hidden = true;
+	} else {
+		const err = await res.json();
+		showStatus(`Fehler: ${err.detail}`, true);
+	}
+});
+
+document.getElementById("fm-editor-cancel").addEventListener("click", () => {
+	fmEditor.hidden = true;
+});
+
+document.getElementById("fm-close").addEventListener("click", closeFileManager);
+fmOverlay.addEventListener("click", (event) => {
+	if (event.target === fmOverlay) closeFileManager();
+});

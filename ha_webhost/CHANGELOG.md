@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.2
+
+- Sicherheitsfix: `GET /api/sites` und alle anderen Site-Endpunkte gaben den
+  Git-Access-Token im Klartext zurück. Neues `SitePublic`-Response-Model
+  ohne `git_token`-Feld eingeführt - der Token wird jetzt nie mehr über die
+  API ausgegeben.
+- Neu: Datei-Manager-UI im Web-Panel (Ordner navigieren, Dateien anlegen,
+  hochladen, im Browser bearbeiten, löschen) - nutzt die bereits
+  vorhandene `/api/files/...`-API.
+- Roadmap angepasst: PHP-Hosting (Phase 2) vor Python-Hosting (Phase 3)
+  vorgezogen.
+
 ## 0.1.1
 
 - Fix: Ingress-Root-Aufruf lieferte `404 Not Found` statt der UI, weil Home

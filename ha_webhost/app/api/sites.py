@@ -6,18 +6,19 @@ from sqlmodel import Session
 from core.config import MAX_UPLOAD_BYTES
 from core.db import get_session
 from core.security import InvalidSiteName, PathTraversal, UnsafeArchive
+from models.site import SitePublic
 from services import site_service
 from services.git_service import GitError
 
 router = APIRouter(prefix="/api/sites", tags=["sites"])
 
 
-@router.get("")
+@router.get("", response_model=list[SitePublic])
 def list_sites(session: Session = Depends(get_session)):
     return site_service.list_sites(session)
 
 
-@router.get("/{name}")
+@router.get("/{name}", response_model=SitePublic)
 def get_site(name: str, session: Session = Depends(get_session)):
     site = site_service.get_site(session, name)
     if not site:
@@ -25,7 +26,7 @@ def get_site(name: str, session: Session = Depends(get_session)):
     return site
 
 
-@router.post("/upload", status_code=201)
+@router.post("/upload", status_code=201, response_model=SitePublic)
 async def deploy_upload(
     name: str = Form(...),
     file: UploadFile = File(...),
@@ -46,7 +47,7 @@ async def deploy_upload(
         raise HTTPException(409, str(exc)) from exc
 
 
-@router.post("/git", status_code=201)
+@router.post("/git", status_code=201, response_model=SitePublic)
 def deploy_git(
     name: str = Form(...),
     git_url: str = Form(...),
@@ -64,7 +65,7 @@ def deploy_git(
         raise HTTPException(422, str(exc)) from exc
 
 
-@router.post("/{name}/redeploy")
+@router.post("/{name}/redeploy", response_model=SitePublic)
 def redeploy(name: str, session: Session = Depends(get_session)):
     try:
         return site_service.redeploy(session, name)
