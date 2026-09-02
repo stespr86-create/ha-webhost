@@ -67,44 +67,50 @@ Alternativ für lokale Entwicklung ganz ohne Git-Hosting: Projektordner nach
 `/addons/ha_webhost` auf dem HA-Host kopieren (z.B. via Samba-/SSH-Add-on) –
 lokale Add-ons werden vom Supervisor automatisch erkannt.
 
-## ⚠️ Update liefert manchmal alten Code aus – Lösung ohne Datenverlust
+## ⚠️ "Update zeigt neue Version, UI bleibt trotzdem alt" – eigentliche Ursache
 
-Beobachtetes Problem: Nach einem Push + Update/Rebuild zeigt HA zwar
-korrekt die neue Version und den neuen Changelog-Text an, der tatsächlich
-laufende Container liefert aber weiterhin den **alten** Code aus. Ursache
-ist vermutlich ein nicht sauber aktualisierter lokaler Git-Checkout des
-Repositories auf dem Supervisor-Host.
+**Korrigiert:** Frühere Versionen dieser Doku vermuteten hier einen
+Supervisor-Bug (stale Git-Checkout beim Rebuild). Das war eine
+**Fehldiagnose**. Die tatsächliche Ursache: Die Home-Assistant-Frontend-PWA
+registriert einen **Workbox-Service-Worker**, der `static/`-Anfragen
+(also `app.js`/`style.css` des Add-ons) im `workbox-runtime-...`-Cache
+Storage ablegt und dabei die Query-String-Parameter ignoriert - normales
+`fetch(url, {cache: "no-store"})` und selbst Cache-Busting per
+`?v=<timestamp>` greifen dagegen **nicht**, da der Service Worker der
+Anfrage vorgelagert ist und sie unabhängig von den Fetch-Cache-Optionen
+aus dem eigenen Cache Storage bedient. Ein geänderter Ingress-Token (z.B.
+durch Deinstallieren/Neuinstallieren) "löst" das Problem nur scheinbar,
+weil dadurch zufällig eine neue, noch nicht gecachte URL entsteht - der
+Supervisor-Build war die ganze Zeit korrekt.
 
-**Lösung (kein Datenverlust, `/data` bleibt unangetastet):** Supervisor
-bietet dafür einen dedizierten Repository-Repair-Endpunkt, der einen
-frischen Git-Checkout erzwingt, ohne das Add-on zu deinstallieren:
+**Echte Lösung (kein Deinstallieren nötig, kein Datenverlust):** Nach
+einem Update den Service-Worker-Cache für die Add-on-Assets leeren. Im
+Browser auf einer beliebigen HA-Seite in der Konsole ausführen (oder per
+`javascript_exec` einer Browser-Automatisierung):
 
 ```js
-// Im Browser auf einer beliebigen HA-Seite in der Konsole ausfuehren
-// (oder ueber javascript_exec einer Browser-Automatisierung):
-const ha = document.querySelector("home-assistant");
-await ha.hass.callWS({
-  type: "supervisor/api",
-  endpoint: "/store/repositories/38ef203b/repair",  // 38ef203b = Repo-Slug
-  method: "post",
-});
-// Danach normal ueber die UI oder per WS "update" auf das Add-on anwenden.
+const cache = await caches.open("workbox-runtime-https://<eure-ha-domain>/");
+const requests = await cache.keys();
+for (const req of requests) {
+  if (req.url.includes("static/")) await cache.delete(req);
+}
 ```
 
-Quelle/Hintergrund: `Repository.reset()` in
-[supervisor/store/repository.py](https://github.com/home-assistant/supervisor/blob/main/supervisor/store/repository.py),
-aufgerufen über `POST /store/repositories/{repository}/repair` in
-[supervisor/api/store.py](https://github.com/home-assistant/supervisor/blob/main/supervisor/api/store.py) -
-siehe auch [DeepWiki: Repository Management](https://deepwiki.com/home-assistant/supervisor/4.1-repository-management).
-Der Repo-Slug steht in den Add-on-Infos (`repository`-Feld) oder in der
-Repository-Liste (`GET /store/repositories`).
+Alternativ reicht oft auch ein normaler Hard-Reload (Cmd/Ctrl+Shift+R) im
+Browser oder ein Schließen/Neuöffnen des Panels nach ein paar Minuten,
+da Workbox Runtime-Caches i.d.R. irgendwann von selbst revalidieren.
 
-**Falls das nicht hilft:** Deinstallieren + Neuinstallieren erzwingt
-garantiert einen kompletten Neuklon, **löscht dabei aber `/data` restlos**
-(getestet, kein automatischer Datenerhalt bei diesem Setup) – vorher
-unbedingt über den **"📦 Alle Sites sichern"**-Button im Panel ein Backup
-ziehen (siehe unten), sofern die Inhalte nicht ohnehin per Git deployt und
-damit extern gesichert sind.
+**Falls trotzdem nichts hilft** (echter Build-Fehler, nicht nur Anzeige):
+Supervisor bietet einen Repository-Repair-Endpunkt
+(`POST /store/repositories/{repository}/repair`, ruft intern
+`Repository.reset()` auf - siehe
+[supervisor/store/repository.py](https://github.com/home-assistant/supervisor/blob/main/supervisor/store/repository.py)
+und [supervisor/api/store.py](https://github.com/home-assistant/supervisor/blob/main/supervisor/api/store.py)),
+der einen frischen Git-Checkout erzwingt, ohne das Add-on zu
+deinstallieren. Nur als allerletzter Ausweg: Deinstallieren +
+Neuinstallieren **löscht `/data` restlos** (getestet, kein automatischer
+Datenerhalt bei diesem Setup) – vorher über den **"📦 Alle Sites
+sichern"**-Button im Panel ein Backup ziehen.
 
 ## Sicherheitshinweise
 

@@ -10,9 +10,12 @@
   Backups mit exportiert). Token wird jetzt nur noch per
   `-c http.extraHeader=...` für den einzelnen Git-Aufruf übergeben, nie
   mehr persistiert.
-- Doku: Bekannte Lösung für "Update zeigt neue Version, liefert aber
-  alten Code" ohne Datenverlust (Supervisor-Repository-Repair-Endpunkt)
-  ergänzt.
+- Doku-Korrektur: "Update liefert alten Code aus" war **kein**
+  Supervisor-Bug, sondern der Workbox-Service-Worker der HA-Frontend-PWA,
+  der `static/`-Assets im Cache Storage vorhält (ignoriert dabei sogar
+  Cache-Busting-Query-Parameter). Echte Lösung (Cache-Eintrag löschen)
+  dokumentiert, Repository-Repair-Endpunkt als Fallback für echte
+  Build-Probleme belassen.
 
 ## 0.1.3
 
