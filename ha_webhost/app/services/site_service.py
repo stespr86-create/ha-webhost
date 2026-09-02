@@ -1,0 +1,130 @@
+import shutil
+from datetime import datetime, timezone
+from typing import Optional
+
+from sqlmodel import Session, select
+
+from core.config import SITES_DIR
+from core.security import validate_site_name
+from models.site import Site, SiteStatus, SourceType
+from services import caddy_service, git_service, zip_service
+
+
+def list_sites(session: Session) -> list[Site]:
+    return list(session.exec(select(Site)).all())
+
+
+def get_site(session: Session, name: str) -> Optional[Site]:
+    return session.exec(select(Site).where(Site.name == name)).first()
+
+
+def _sync_proxy(session: Session) -> None:
+    names = [s.name for s in list_sites(session) if s.status == SiteStatus.active]
+    caddy_service.write_and_reload(names)
+
+
+def create_site_from_upload(session: Session, name: str, upload_bytes: bytes) -> Site:
+    name = validate_site_name(name)
+    if get_site(session, name):
+        raise ValueError(f"Site '{name}' existiert bereits.")
+
+    site = Site(name=name, source_type=SourceType.upload, status=SiteStatus.deploying)
+    session.add(site)
+    session.commit()
+    session.refresh(site)
+
+    try:
+        zip_service.deploy_zip_upload(upload_bytes, SITES_DIR / name)
+        site.status = SiteStatus.active
+        site.last_error = None
+    except Exception as exc:
+        site.status = SiteStatus.failed
+        site.last_error = str(exc)
+        raise
+    finally:
+        site.updated_at = datetime.now(timezone.utc)
+        site.last_deploy_at = datetime.now(timezone.utc)
+        session.add(site)
+        session.commit()
+        _sync_proxy(session)
+
+    return site
+
+
+def create_site_from_git(
+    session: Session, name: str, git_url: str, branch: str, token: Optional[str]
+) -> Site:
+    name = validate_site_name(name)
+    if get_site(session, name):
+        raise ValueError(f"Site '{name}' existiert bereits.")
+
+    site = Site(
+        name=name,
+        source_type=SourceType.git,
+        git_url=git_url,
+        git_branch=branch or "main",
+        git_token=token,
+        status=SiteStatus.deploying,
+    )
+    session.add(site)
+    session.commit()
+    session.refresh(site)
+
+    try:
+        git_service.clone_or_pull(git_url, site.git_branch, token, SITES_DIR / name)
+        site.status = SiteStatus.active
+        site.last_error = None
+    except Exception as exc:
+        site.status = SiteStatus.failed
+        site.last_error = str(exc)
+        raise
+    finally:
+        site.updated_at = datetime.now(timezone.utc)
+        site.last_deploy_at = datetime.now(timezone.utc)
+        session.add(site)
+        session.commit()
+        _sync_proxy(session)
+
+    return site
+
+
+def redeploy(session: Session, name: str) -> Site:
+    site = get_site(session, name)
+    if not site:
+        raise ValueError(f"Site '{name}' nicht gefunden.")
+    if site.source_type != SourceType.git:
+        raise ValueError("Nur per Git deployte Sites können neu deployt werden.")
+
+    site.status = SiteStatus.deploying
+    session.add(site)
+    session.commit()
+
+    try:
+        git_service.clone_or_pull(site.git_url, site.git_branch, site.git_token, SITES_DIR / name)
+        site.status = SiteStatus.active
+        site.last_error = None
+    except Exception as exc:
+        site.status = SiteStatus.failed
+        site.last_error = str(exc)
+        raise
+    finally:
+        site.updated_at = datetime.now(timezone.utc)
+        site.last_deploy_at = datetime.now(timezone.utc)
+        session.add(site)
+        session.commit()
+
+    return site
+
+
+def delete_site(session: Session, name: str) -> None:
+    site = get_site(session, name)
+    if not site:
+        raise ValueError(f"Site '{name}' nicht gefunden.")
+
+    site_dir = SITES_DIR / name
+    if site_dir.exists():
+        shutil.rmtree(site_dir)
+
+    session.delete(site)
+    session.commit()
+    _sync_proxy(session)

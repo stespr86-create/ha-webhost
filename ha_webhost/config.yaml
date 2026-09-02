@@ -1,0 +1,26 @@
+name: "HA WebHost"
+version: "0.1.0"
+slug: "ha_webhost"
+description: "Statisches Website-Hosting direkt in Home Assistant (MVP)"
+url: "https://github.com/stespr86-create/ha-webhost"
+arch:
+  - aarch64
+  - amd64
+  - armv7
+init: false
+ingress: true
+ingress_port: 8000
+ingress_entry: /
+panel_icon: mdi:web
+panel_title: WebHost
+startup: services
+boot: auto
+# Optionaler direkter Zugriff auf gehostete Sites ohne HA-Login.
+# Standardmäßig nicht veröffentlicht (null) - kann im Add-on Netzwerk-Tab
+# aktiviert werden, wenn Besucher ohne HA-Anmeldung zugreifen sollen.
+ports:
+  8000/tcp: null
+ports_description:
+  8000/tcp: "Optional: direkter Zugriff auf gehostete Sites ohne HA-Anmeldung"
+options: {}
+schema: {}

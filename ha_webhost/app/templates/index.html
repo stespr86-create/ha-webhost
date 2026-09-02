@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="de">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>HA WebHost</title>
+	<link rel="stylesheet" href="static/style.css" />
+</head>
+<body>
+	<header>
+		<h1>HA WebHost</h1>
+		<p class="subtitle">Statisches Website-Hosting für Home Assistant</p>
+	</header>
+
+	<main>
+		<section class="card">
+			<h2>Sites</h2>
+			<table id="sites-table">
+				<thead>
+					<tr>
+						<th>Name</th>
+						<th>Quelle</th>
+						<th>Status</th>
+						<th>URL</th>
+						<th>Aktionen</th>
+					</tr>
+				</thead>
+				<tbody id="sites-body">
+					<tr><td colspan="5">Lade Sites...</td></tr>
+				</tbody>
+			</table>
+		</section>
+
+		<section class="card">
+			<h2>Neue Site: ZIP-Upload</h2>
+			<form id="upload-form">
+				<label>Name (a-z, 0-9, -)
+					<input type="text" name="name" required pattern="[a-z0-9][a-z0-9-]{1,30}[a-z0-9]" />
+				</label>
+				<label>ZIP-Datei
+					<input type="file" name="file" accept=".zip" required />
+				</label>
+				<button type="submit">Hochladen &amp; deployen</button>
+			</form>
+			<p class="hint">
+				Statische Builds (React/Vue/Angular) müssen mit relativem Base-Path gebaut werden
+				(z.B. Vite: <code>base: './'</code>), damit sie unter <code>/sites/&lt;name&gt;/</code>
+				korrekt funktionieren.
+			</p>
+		</section>
+
+		<section class="card">
+			<h2>Neue Site: Git-Deployment</h2>
+			<form id="git-form">
+				<label>Name (a-z, 0-9, -)
+					<input type="text" name="name" required pattern="[a-z0-9][a-z0-9-]{1,30}[a-z0-9]" />
+				</label>
+				<label>Repository-URL
+					<input type="url" name="git_url" required placeholder="https://github.com/user/repo.git" />
+				</label>
+				<label>Branch
+					<input type="text" name="branch" value="main" />
+				</label>
+				<label>Access Token (optional, für private Repos)
+					<input type="password" name="token" autocomplete="off" />
+				</label>
+				<button type="submit">Klonen &amp; deployen</button>
+			</form>
+		</section>
+
+		<div id="status-message" class="status" role="status"></div>
+	</main>
+
+	<script src="static/app.js"></script>
+</body>
+</html>

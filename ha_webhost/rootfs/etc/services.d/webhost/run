@@ -1,0 +1,4 @@
+#!/usr/bin/with-contenv bashio
+bashio::log.info "Starte HA WebHost Backend..."
+cd /app
+exec python3 -m uvicorn main:app --host 127.0.0.1 --port 8001
