@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.3
+
+- Sicherheitsfix: Datei-/Ordnernamen im Datei-Manager wurden ungefiltert
+  als HTML gerendert (gespeicherte XSS). Ein Git-Repo oder eine ZIP-Datei
+  mit einem bösartig benannten File (z.B. `<img src=x onerror=...>`)
+  hätte beim Öffnen des Datei-Managers Skriptcode im Admin-Panel
+  ausgeführt. Jetzt konsequent per `escapeHtml()` escaped, verifiziert
+  mit echtem XSS-Payload-Dateinamen.
+
 ## 0.1.2
 
 - Sicherheitsfix: `GET /api/sites` und alle anderen Site-Endpunkte gaben den

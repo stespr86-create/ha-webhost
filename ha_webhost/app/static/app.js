@@ -4,6 +4,12 @@
 const sitesBody = document.getElementById("sites-body");
 const statusMessage = document.getElementById("status-message");
 
+const HTML_ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+
+function escapeHtml(value) {
+	return String(value).replace(/[&<>"']/g, (ch) => HTML_ESCAPES[ch]);
+}
+
 function showStatus(message, isError = false) {
 	statusMessage.textContent = message;
 	statusMessage.className = "status" + (isError ? " error" : " success");
@@ -176,11 +182,12 @@ async function fmLoadList() {
 		.map((entry) => {
 			const icon = entry.is_dir ? "📁" : "📄";
 			const sizeLabel = entry.is_dir ? "" : `<span class="fm-size">${entry.size} B</span>`;
+			const safeName = escapeHtml(entry.name);
 			return `
-				<li class="fm-entry" data-name="${entry.name}" data-is-dir="${entry.is_dir}">
-					<span class="fm-entry-name">${icon} ${entry.name}</span>
+				<li class="fm-entry" data-name="${safeName}" data-is-dir="${entry.is_dir}">
+					<span class="fm-entry-name">${icon} ${safeName}</span>
 					${sizeLabel}
-					<button type="button" data-fm-action="delete" data-fm-name="${entry.name}" class="danger fm-delete">🗑</button>
+					<button type="button" data-fm-action="delete" data-fm-name="${safeName}" class="danger fm-delete">🗑</button>
 				</li>
 			`;
 		})
