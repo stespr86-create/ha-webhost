@@ -18,7 +18,7 @@ def get_site(session: Session, name: str) -> Optional[Site]:
     return session.exec(select(Site).where(Site.name == name)).first()
 
 
-def _sync_proxy(session: Session) -> None:
+def sync_proxy(session: Session) -> None:
     names = [s.name for s in list_sites(session) if s.status == SiteStatus.active]
     caddy_service.write_and_reload(names)
 
@@ -46,7 +46,7 @@ def create_site_from_upload(session: Session, name: str, upload_bytes: bytes) ->
         site.last_deploy_at = datetime.now(timezone.utc)
         session.add(site)
         session.commit()
-        _sync_proxy(session)
+        sync_proxy(session)
 
     return site
 
@@ -83,7 +83,7 @@ def create_site_from_git(
         site.last_deploy_at = datetime.now(timezone.utc)
         session.add(site)
         session.commit()
-        _sync_proxy(session)
+        sync_proxy(session)
 
     return site
 
@@ -127,4 +127,4 @@ def delete_site(session: Session, name: str) -> None:
 
     session.delete(site)
     session.commit()
-    _sync_proxy(session)
+    sync_proxy(session)

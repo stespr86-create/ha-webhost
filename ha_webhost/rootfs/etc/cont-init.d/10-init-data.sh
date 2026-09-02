@@ -15,6 +15,11 @@ if [ ! -f /data/Caddyfile ]; then
 		output stdout
 	}
 
+	# Home Assistant Ingress haengt teils einen doppelten Trailing-Slash an
+	# die Basis-URL an (z.B. ".../<token>//"). Auf einfaches "/" reduzieren,
+	# bevor geroutet wird.
+	uri replace // / 1
+
 	handle {
 		reverse_proxy 127.0.0.1:8001
 	}

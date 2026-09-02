@@ -17,6 +17,11 @@ HEADER = """\
 \t\toutput stdout
 \t}
 
+\t# Home Assistant Ingress haengt teils einen doppelten Trailing-Slash an
+\t# die Basis-URL an (z.B. ".../<token>//"). Auf einfaches "/" reduzieren,
+\t# bevor geroutet wird.
+\turi replace // / 1
+
 """
 
 SITE_BLOCK = """\

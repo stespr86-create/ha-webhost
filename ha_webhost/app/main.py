@@ -7,7 +7,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from api import files, sites
-from core.db import init_db
+from core.db import get_session, init_db
+from services import site_service
 
 logging.basicConfig(level=logging.INFO)
 
@@ -18,6 +19,14 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    # Caddyfile bei jedem Start neu aus dem DB-Stand generieren, damit sie
+    # nie gegenueber der Datenbank veraltet (z.B. nach Konfig-Aenderungen
+    # an der Caddy-Vorlage oder falls die Datei manuell entfernt wurde).
+    session = next(get_session())
+    try:
+        site_service.sync_proxy(session)
+    finally:
+        session.close()
     yield
 
 
