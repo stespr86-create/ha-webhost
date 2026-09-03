@@ -14,6 +14,24 @@
 
 	<main>
 		<section class="card">
+			<h2>Einstellungen</h2>
+			<form id="settings-form">
+				<label>Öffentliche Basis-URL (optional)
+					<input
+						type="text"
+						id="public-base-url-input"
+						placeholder="https://euer-tailscale-host.ts.net:10000"
+					/>
+				</label>
+				<button type="submit">Speichern</button>
+			</form>
+			<p class="hint">
+				Falls gesetzt, wird bei jeder Site zusätzlich zum internen HA-Link
+				ein externer Link angezeigt (z.B. für Tailscale Funnel).
+			</p>
+		</section>
+
+		<section class="card">
 			<div class="card-header">
 				<h2>Sites</h2>
 				<a id="backup-all-link" href="api/sites/backup" class="button-link">📦 Alle Sites sichern</a>

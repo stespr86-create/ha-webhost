@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.8
+
+- Neu: Einstellung "Öffentliche Basis-URL" im Panel (z.B. für Tailscale
+  Funnel). Wenn gesetzt, wird bei jeder Site zusätzlich zum internen
+  HA-Link ("🏠") ein externer Link ("🌐") angezeigt und ist direkt
+  anklickbar/kopierbar. Persistiert in `/data/settings.json`.
+
 ## 0.1.7
 
 - Neu: Zweiter, strikt getrennter Caddy-Listener auf Port 8090 - liefert

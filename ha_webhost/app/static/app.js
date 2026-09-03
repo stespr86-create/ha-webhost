@@ -4,6 +4,10 @@
 const sitesBody = document.getElementById("sites-body");
 const statusMessage = document.getElementById("status-message");
 const backupAllLink = document.getElementById("backup-all-link");
+const settingsForm = document.getElementById("settings-form");
+const publicBaseUrlInput = document.getElementById("public-base-url-input");
+
+let publicBaseUrl = null;
 
 const HTML_ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 
@@ -32,12 +36,16 @@ async function loadSites() {
 	sitesBody.innerHTML = sites
 		.map((site) => {
 			const url = `sites/${site.name}/`;
+			const externalUrl = publicBaseUrl ? `${publicBaseUrl}/sites/${site.name}/` : null;
+			const externalLinkHtml = externalUrl
+				? `<br /><a href="${escapeHtml(externalUrl)}" target="_blank" rel="noopener">🌐 ${escapeHtml(externalUrl)}</a>`
+				: "";
 			return `
 				<tr>
 					<td>${site.name}</td>
 					<td>${site.source_type}</td>
 					<td><span class="badge badge-${site.status}">${site.status}</span></td>
-					<td><a href="${url}" target="_blank" rel="noopener">${url}</a></td>
+					<td><a href="${url}" target="_blank" rel="noopener">🏠 ${url}</a>${externalLinkHtml}</td>
 					<td>
 						<button data-action="files" data-name="${site.name}">📂 Dateien</button>
 						${site.source_type === "git" ? `<button data-action="redeploy" data-name="${site.name}">Redeploy</button>` : ""}
@@ -153,7 +161,38 @@ backupAllLink.addEventListener("click", (event) => {
 	}
 });
 
-loadSites();
+async function loadSettings() {
+	const res = await fetch("api/settings");
+	const data = await res.json();
+	publicBaseUrl = data.public_base_url;
+	publicBaseUrlInput.value = publicBaseUrl || "";
+}
+
+settingsForm.addEventListener("submit", async (event) => {
+	event.preventDefault();
+	const value = publicBaseUrlInput.value.trim();
+
+	const res = await fetch("api/settings", {
+		method: "PUT",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ public_base_url: value || null }),
+	});
+	if (res.ok) {
+		showStatus("Einstellungen gespeichert.");
+		await loadSettings();
+		loadSites();
+	} else {
+		const err = await res.json();
+		showStatus(`Fehler: ${err.detail}`, true);
+	}
+});
+
+async function init() {
+	await loadSettings();
+	await loadSites();
+}
+
+init();
 setInterval(loadSites, 10000);
 
 // --- Datei-Manager ---
