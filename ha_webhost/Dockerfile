@@ -9,7 +9,14 @@ RUN apk add --no-cache \
         jpeg \
         zlib \
         mariadb \
-        mariadb-client
+        mariadb-client \
+        nginx \
+        php82 \
+        php82-fpm \
+        php82-mysqli \
+        php82-gd \
+        php82-curl \
+        php82-json
 
 WORKDIR /app
 

@@ -2,6 +2,9 @@
 
 mkdir -p /data/sites
 mkdir -p /data/mariadb
+mkdir -p /var/log/nginx
+mkdir -p /var/cache/nginx
+mkdir -p /run/php-fpm
 
 # MariaDB beim ersten Start initialisieren
 if [ ! -f /data/mariadb/initialized ]; then
@@ -29,7 +32,12 @@ if [ ! -f /data/Caddyfile ]; then
 	# bevor geroutet wird.
 	uri replace // / 1
 
-	handle {
+	route {
+		# WordPress-Sites: zu Nginx (Port 8080)
+		handle_path /sites/* {
+			reverse_proxy 127.0.0.1:8080
+		}
+		# Alles andere: zu WebHost-Backend (Python)
 		reverse_proxy 127.0.0.1:8001
 	}
 }
