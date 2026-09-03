@@ -16,7 +16,12 @@ RUN apk add --no-cache \
         php82-mysqli \
         php82-gd \
         php82-curl \
-        php82-json
+        php82-json \
+        curl
+
+# WordPress CLI installieren
+RUN curl -o /usr/local/bin/wp https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && \
+    chmod +x /usr/local/bin/wp
 
 WORKDIR /app
 

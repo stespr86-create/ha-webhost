@@ -228,6 +228,15 @@ def delete_site(session: Session, name: str) -> None:
     if not site:
         raise ValueError(f"Site '{name}' nicht gefunden.")
 
+    # WordPress-Datenbank aufräumen
+    if site.source_type == SourceType.wordpress and site.wordpress_db_name and site.wordpress_db_user:
+        try:
+            wordpress_service.delete_wordpress_database(site.wordpress_db_name, site.wordpress_db_user)
+        except Exception as e:
+            # Nicht fatal – Dateien trotzdem löschen
+            import logging
+            logging.getLogger(__name__).error(f"Fehler beim Löschen der WordPress-DB: {e}")
+
     site_dir = SITES_DIR / name
     if site_dir.exists():
         shutil.rmtree(site_dir)
