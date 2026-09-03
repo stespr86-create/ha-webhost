@@ -156,6 +156,30 @@ alle aktiven Sites) für **jeden im Internet** erreichbar, ohne HA-Login.
 Nur Sites deployen, die tatsächlich öffentlich sein sollen. Das Admin-Panel
 selbst bleibt davon unberührt (weiterhin nur über HA-Ingress erreichbar).
 
+### ⚠️ Bekannte Einschränkung: Port 10000 in manchen Netzwerken blockiert
+
+Getestet und bestätigt: Aus einem Firmennetzwerk war die öffentliche URL
+(Port 10000) **nicht erreichbar** (Timeout), aus Mobilfunknetz und freiem
+WLAN dagegen problemlos. Ursache: Viele Firmen-Firewalls lassen ausgehend
+nur Standard-Ports (80/443) durch, unübliche Ports wie 10000 werden
+blockiert. Der Server/Funnel selbst war dabei nachweislich gesund (von
+außerhalb per `curl` mit sauberem TLS-Handshake bestätigt) – es liegt am
+jeweiligen Netzwerk, nicht an dieser Konfiguration.
+
+**Aktueller Stand:** Bewusst so belassen (Stand: nach Rücksprache) – Port
+10000 ist der einzige der drei von Tailscale erlaubten Funnel-Ports (443,
+8443, 10000), der auf dem Referenzsystem nicht bereits durch einen anderen
+Dienst (n8n, siehe oben) belegt war.
+
+**Falls das später zum Problem wird, Optionen für einen Standard-Port**
+(443 oder 8443, in restriktiven Netzwerken zuverlässiger erreichbar):
+- Den anderen Dienst (der aktuell 443/8443 belegt) auf einen internen
+  Port verschieben, um den Standard-Port für WebHost freizumachen –
+  **nur mit Vorsicht**, siehe Vorfall oben: unbedingt vorher
+  `tailscale funnel status` prüfen und die Config des anderen Dienstes
+  danach explizit gegentesten.
+- Alternativ prüfen, ob die Firmen-IT Port 10000 ausgehend freigeben kann.
+
 ## ⚠️ "Update zeigt neue Version, UI bleibt trotzdem alt" – eigentliche Ursache
 
 **Korrigiert:** Frühere Versionen dieser Doku vermuteten hier einen
