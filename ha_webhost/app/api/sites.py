@@ -93,6 +93,21 @@ def deploy_git(
         raise HTTPException(422, str(exc)) from exc
 
 
+@router.post("/gallery", status_code=201, response_model=SitePublic)
+def deploy_gallery(
+    name: str = Form(...),
+    link_url: Optional[str] = Form(None),
+    link_label: Optional[str] = Form(None),
+    session: Session = Depends(get_session),
+):
+    try:
+        return site_service.create_gallery_site(session, name, link_url, link_label)
+    except InvalidSiteName as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
 @router.post("/{name}/redeploy", response_model=SitePublic)
 def redeploy(name: str, session: Session = Depends(get_session)):
     try:

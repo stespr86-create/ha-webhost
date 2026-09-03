@@ -8,7 +8,7 @@ from core import crypto
 from core.config import SITES_DIR
 from core.security import validate_site_name
 from models.site import Site, SiteStatus, SourceType
-from services import caddy_service, git_service, zip_service
+from services import caddy_service, gallery_service, git_service, zip_service
 
 
 def list_sites(session: Session) -> list[Site]:
@@ -93,6 +93,39 @@ def create_site_from_git(
         session.add(site)
         session.commit()
         sync_proxy(session)
+
+    return site
+
+
+def create_gallery_site(
+    session: Session, name: str, link_url: Optional[str], link_label: Optional[str]
+) -> Site:
+    """Legt eine Foto-Galerie-Site an: Gaeste koennen ohne eigenen Account
+    ueber .../api/upload Fotos beisteuern, alle sehen sie in derselben
+    Galerie (siehe api/gallery.py + services/gallery_service.py)."""
+    name = validate_site_name(name)
+    if get_site(session, name):
+        raise ValueError(f"Site '{name}' existiert bereits.")
+
+    site = Site(
+        name=name,
+        source_type=SourceType.gallery,
+        status=SiteStatus.active,
+        gallery_link_url=link_url or None,
+        gallery_link_label=link_label or None,
+    )
+    session.add(site)
+    session.commit()
+    session.refresh(site)
+
+    gallery_service.init_gallery(name)
+    gallery_service.write_frontend(name)
+
+    site.updated_at = datetime.now(timezone.utc)
+    site.last_deploy_at = datetime.now(timezone.utc)
+    session.add(site)
+    session.commit()
+    sync_proxy(session)
 
     return site
 

@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.1.11
+
+- Neu: Site-Typ "Fotogalerie" - eine gemeinsame Foto-Wand, auf die jeder mit
+  dem Link ohne eigenen Account Fotos hochladen kann; alle sehen dieselbe
+  Galerie. Fotos werden serverseitig verkleinert/als JPEG neu kodiert
+  (Pillow) und liegen direkt in `/data`, nicht bei einem Drittanbieter.
+  Optional lässt sich ein externer Link (z.B. zu einem bestehenden
+  Google-Fotos-Album) hinterlegen. Moderation über den vorhandenen
+  Datei-Manager (Foto im Ordner `uploads/` löschen, Galerie räumt den
+  Eintrag automatisch auf).
+- Dafür: neuer, eng gefasster Backend-Endpunkt (`/sites/<name>/api/*`),
+  der - anders als die restliche Admin-API - auch auf dem öffentlichen
+  Port 8090 ohne HA-Login erreichbar ist, da Gäste keinen HA-Zugang haben.
+  Nur Foto-Upload und -Abruf, kein Löschen oder sonstige Admin-Funktion.
+- Fix während der Entwicklung gefunden: Caddys Caddyfile-Adapter sortiert
+  `handle`/`handle_path`-Blöcke selbstständig um, unabhängig von der
+  Schreibreihenfolge - dadurch landete der neue API-Proxy-Block hinter dem
+  allgemeinen Site-Dateien-Block und wurde nie erreicht. Behoben durch
+  explizites `route { }` um beide Blöcke, das die Schreibreihenfolge
+  erzwingt.
+- DB-Schema erweitert (neue, optionale Spalten für den Galerie-Link) -
+  bestehende Installationen bekommen die Spalten per einfacher
+  Mini-Migration beim Start automatisch nachgezogen, ohne Datenverlust.
+
 ## 0.1.10
 
 - Neu: Dunkles, aufgeräumteres Design für das gesamte Panel (Farben,

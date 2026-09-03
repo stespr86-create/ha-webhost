@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from api import files, settings, sites
+from api import files, gallery, settings, sites
 from core.db import get_session, init_db
 from services import site_service
 
@@ -34,6 +34,7 @@ app = FastAPI(title="HA WebHost", lifespan=lifespan)
 app.include_router(sites.router)
 app.include_router(files.router)
 app.include_router(settings.router)
+app.include_router(gallery.router)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 

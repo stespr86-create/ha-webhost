@@ -30,11 +30,21 @@ INGRESS_HEADER = """\
 \t# bevor geroutet wird.
 \turi replace // / 1
 
+\t# "route" erzwingt, dass die handle(_path)-Bloecke unten GENAU in
+\t# Schreibreihenfolge geprueft werden. Ohne "route" sortiert Caddys
+\t# Caddyfile-Adapter handle/handle_path/reverse_proxy etc. selbststaendig
+\t# nach einer festen Standard-Reihenfolge um - das hat hier dazu gefuehrt,
+\t# dass handle_path (Site-Dateien) trotz anderer Schreibreihenfolge VOR
+\t# dem API-Proxy-Block ausgewertet wurde und /sites/*/api/* faelschlich
+\t# als Datei-Pfad landete (index.html statt Backend-Antwort).
+\troute {
+
 """
 
 INGRESS_FOOTER = """\
-\thandle {{
-\t\treverse_proxy 127.0.0.1:{backend_port}
+\t\thandle {{
+\t\t\treverse_proxy 127.0.0.1:{backend_port}
+\t\t}}
 \t}}
 }}
 """
@@ -51,21 +61,41 @@ PUBLIC_HEADER = """\
 \t\toutput stdout
 \t}}
 
+\troute {{
+
 """
 
 PUBLIC_FOOTER = """\
-\thandle {
-\t\trespond 404
+\t\thandle {
+\t\t\trespond 404
+\t\t}
 \t}
 }
 """
 
 SITE_BLOCK = """\
-\thandle_path /sites/{name}/* {{
-\t\troot * {root}
-\t\ttry_files {{path}} /index.html
-\t\tfile_server
-\t}}
+\t\thandle_path /sites/{name}/* {{
+\t\t\troot * {root}
+\t\t\ttry_files {{path}} /index.html
+\t\t\tfile_server
+\t\t}}
+
+"""
+
+# Galerie-Sites brauchen einen kleinen Backend-Endpunkt fuer
+# Foto-Upload/-Liste (services/gallery_service.py), auch auf dem
+# OEFFENTLICHEN Port - Gaeste haben keinen HA-Login. Bewusst nur dieser
+# eine, eng gefasste Pfad ("/sites/*/api/*", NICHT "/api/*"): das Backend
+# kennt unter dieser Route nur die zwei Lese-/Upload-Endpunkte aus
+# api/gallery.py, kein Loeschen, keine sonstige Admin-Funktion - "handle"
+# (statt "handle_path") behaelt den vollen Pfad bei, damit die Route im
+# Backend den Site-Namen aus der URL lesen kann. Muss VOR dem allgemeinen
+# SITE_BLOCK stehen, sonst wuerde file_server versuchen, den Pfad als
+# Datei auszuliefern.
+API_PROXY_BLOCK = """\
+\t\thandle /sites/*/api/* {{
+\t\t\treverse_proxy 127.0.0.1:{backend_port}
+\t\t}}
 
 """
 
@@ -73,10 +103,15 @@ SITE_BLOCK = """\
 def render_caddyfile(site_names: Iterable[str]) -> str:
     names = sorted(site_names)
     site_blocks = "".join(SITE_BLOCK.format(name=name, root=str(SITES_DIR / name)) for name in names)
+    api_proxy_block = API_PROXY_BLOCK.format(backend_port=BACKEND_INTERNAL_PORT)
 
-    ingress_block = INGRESS_HEADER + site_blocks + INGRESS_FOOTER.format(backend_port=BACKEND_INTERNAL_PORT)
+    ingress_block = (
+        INGRESS_HEADER + api_proxy_block + site_blocks
+        + INGRESS_FOOTER.format(backend_port=BACKEND_INTERNAL_PORT)
+    )
     public_block = (
-        PUBLIC_HEADER.format(public_port=CADDY_PUBLIC_SITES_PORT) + site_blocks + PUBLIC_FOOTER
+        PUBLIC_HEADER.format(public_port=CADDY_PUBLIC_SITES_PORT)
+        + api_proxy_block + site_blocks + PUBLIC_FOOTER
     )
 
     return GLOBAL_OPTS + ingress_block + "\n" + public_block

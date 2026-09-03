@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="de">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>Fotowand</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link
+		rel="stylesheet"
+		href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&family=Caveat:wght@500;600;700&display=swap"
+	/>
+	<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+	<div class="wrap hero" id="hero">
+		<canvas id="confetti-canvas"></canvas>
+		<div class="hero-inner">
+			<div>
+				<span class="eyebrow" id="eyebrow">Fotowand</span>
+				<h1 id="hero-title">Fotowand</h1>
+				<p class="lead">Alle Erinnerungen an einem Ort: Leg dein eigenes Foto dazu und schau dir an, was andere schon hochgeladen haben.</p>
+				<div class="cta-row">
+					<a href="#upload" class="btn btn-primary">Foto hochladen</a>
+					<a href="#" id="external-link" class="btn btn-ghost" target="_blank" rel="noopener noreferrer" hidden></a>
+				</div>
+			</div>
+			<div class="balloon-art" aria-hidden="true">
+				<svg viewBox="0 0 220 260" xmlns="http://www.w3.org/2000/svg">
+					<g class="balloon-2"><ellipse cx="70" cy="70" rx="42" ry="50" fill="var(--accent-2)"/><path d="M70 118 L64 175" stroke="var(--ink-soft)" stroke-width="2" fill="none"/><polygon points="66,118 74,118 70,128" fill="var(--accent-2)"/></g>
+					<g class="balloon-1"><ellipse cx="140" cy="55" rx="38" ry="46" fill="var(--accent)"/><path d="M140 99 L146 168" stroke="var(--ink-soft)" stroke-width="2" fill="none"/><polygon points="136,99 144,99 140,109" fill="var(--accent)"/></g>
+					<g class="balloon-3"><ellipse cx="108" cy="120" rx="34" ry="42" fill="var(--gold)"/><path d="M108 160 L112 210" stroke="var(--ink-soft)" stroke-width="2" fill="none"/><polygon points="104,160 112,160 108,170" fill="var(--gold)"/></g>
+				</svg>
+			</div>
+		</div>
+	</div>
+
+	<div class="wrap section" id="upload">
+		<div class="section-head">
+			<h2>Foto dazulegen</h2>
+		</div>
+		<div class="upload-card">
+			<div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Fotos auswählen oder hierher ziehen">
+				<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+					<rect x="4" y="12" width="40" height="30" rx="4" stroke="var(--accent)" stroke-width="2.5"/>
+					<circle cx="24" cy="27" r="9" stroke="var(--accent)" stroke-width="2.5"/>
+					<path d="M16 12L19 6H29L32 12" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+				</svg>
+				<div class="dz-title">Bilder hierher ziehen oder klicken</div>
+				<div class="dz-hint">JPG oder PNG – wird automatisch verkleinert</div>
+				<input type="file" id="file-input" accept="image/*" multiple hidden />
+			</div>
+			<div class="caption-row">
+				<label>Kommentar (optional)
+					<input type="text" id="caption-input" placeholder="z. B. „Kuchen-Moment“" maxlength="60" />
+				</label>
+			</div>
+			<p class="upload-status" id="upload-status" role="status"></p>
+		</div>
+	</div>
+
+	<div class="wrap section" id="gallery-section">
+		<div class="section-head">
+			<h2>Die Fotowand</h2>
+			<span class="count"><span id="photo-count">0</span> Fotos</span>
+		</div>
+		<div class="gallery-grid" id="gallery-grid"></div>
+		<p class="empty-state" id="empty-state" hidden>Noch keine Fotos – lade das erste hoch!</p>
+	</div>
+
+	<footer>
+		Fotos bleiben auf diesem Server gespeichert – nicht öffentlich im Netz auffindbar
+	</footer>
+
+	<div class="lightbox" id="lightbox" hidden>
+		<div class="lightbox-box">
+			<div class="lightbox-media" id="lightbox-media"></div>
+			<p id="lightbox-caption"></p>
+			<button type="button" class="lightbox-close" id="lightbox-close">Schließen ✕</button>
+		</div>
+	</div>
+
+	<script src="app.js"></script>
+</body>
+</html>

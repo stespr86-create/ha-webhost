@@ -8,6 +8,7 @@ from sqlmodel import Field, SQLModel
 class SourceType(str, Enum):
     upload = "upload"
     git = "git"
+    gallery = "gallery"
 
 
 class SiteStatus(str, Enum):
@@ -27,6 +28,8 @@ class Site(SQLModel, table=True):
     git_url: Optional[str] = None
     git_branch: str = "main"
     git_token: Optional[str] = None
+    gallery_link_url: Optional[str] = None
+    gallery_link_label: Optional[str] = None
     status: SiteStatus = SiteStatus.active
     created_at: datetime = Field(default_factory=_utcnow)
     updated_at: datetime = Field(default_factory=_utcnow)
@@ -48,6 +51,8 @@ class SitePublic(SQLModel):
     source_type: SourceType
     git_url: Optional[str] = None
     git_branch: str = "main"
+    gallery_link_url: Optional[str] = None
+    gallery_link_label: Optional[str] = None
     status: SiteStatus = SiteStatus.active
     created_at: datetime
     updated_at: datetime

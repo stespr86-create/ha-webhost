@@ -81,6 +81,29 @@
 		</section>
 
 		<section class="card">
+			<h2>Neue Site: Fotogalerie</h2>
+			<form id="gallery-form">
+				<label>Name (a-z, 0-9, -)
+					<input type="text" name="name" required pattern="[a-z0-9][a-z0-9-]{1,30}[a-z0-9]" />
+				</label>
+				<label>Externer Link (optional, z.B. Google Fotos)
+					<input type="url" name="link_url" placeholder="https://photos.google.com/share/..." />
+				</label>
+				<label>Link-Beschriftung (optional)
+					<input type="text" name="link_label" placeholder="Weitere Fotos ansehen" maxlength="60" />
+				</label>
+				<button type="submit">Galerie anlegen</button>
+			</form>
+			<p class="hint">
+				Erstellt eine Seite, auf der jeder mit dem Link – ganz ohne eigenen
+				Account – Fotos hochladen kann; alle sehen dieselbe Galerie. Die
+				Fotos landen direkt auf diesem Server. Einzelne Fotos lassen sich
+				bei Bedarf über den "📂 Dateien"-Knopf (Ordner <code>uploads</code>)
+				entfernen.
+			</p>
+		</section>
+
+		<section class="card">
 			<h2>Neue Site: Git-Deployment</h2>
 			<form id="git-form">
 				<label>Name (a-z, 0-9, -)

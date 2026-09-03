@@ -12,6 +12,9 @@ im HA-Ingress-Panel.
 - ZIP-Upload mit automatischem, sicherem Entpacken (Zip-Slip-Schutz)
 - Deployment aus öffentlichen und privaten Git-Repositories (GitHub/GitLab/
   Gitea, per HTTPS-URL + optionalem Access Token)
+- Fotogalerie-Sites: gemeinsame Foto-Wand, auf die jeder mit dem Link ohne
+  eigenen Account Fotos hochladen kann (z.B. für ein Familienfest) - Fotos
+  liegen direkt auf diesem Server, siehe Abschnitt "Fotogalerie-Sites"
 - Redeploy per Knopfdruck (git pull bei Git-Sites, erneuter ZIP-Upload
   unter demselben Namen bei Upload-Sites – "🔄 Update"-Button)
 - Einfacher Datei-Browser/-Editor über die API (`/api/files/...`)
@@ -233,6 +236,41 @@ Neuinstallieren **löscht `/data` restlos** (getestet, kein automatischer
 Datenerhalt bei diesem Setup) – vorher über den **"📦 Alle Sites
 sichern"**-Button im Panel ein Backup ziehen.
 
+## Fotogalerie-Sites
+
+Über "Neue Site: Fotogalerie" im Panel lässt sich eine gemeinsame Foto-Wand
+anlegen (z.B. für ein Familienfest): jeder mit dem Link kann - ganz ohne
+eigenen Google-/HA-Account - Fotos hochladen, alle sehen dieselbe Galerie
+(Polling alle ~12s). Optional lässt sich ein externer Link (z.B. zu einem
+Google-Fotos-Album) hinterlegen, der als zusätzlicher Button angezeigt wird.
+
+Technisch:
+
+- Fotos werden beim Hochladen serverseitig per Pillow verkleinert (max.
+  1600px Kante) und als JPEG neu kodiert (Qualität 82) - hält Speicher- und
+  RAM-Verbrauch auf der Zielhardware in Grenzen und verwirft dabei
+  eingebettete EXIF-Metadaten (z.B. GPS-Standort) bis auf die für die
+  Ausrichtung nötige Rotation.
+- Limits pro Galerie: max. 8 MB pro Foto, max. 300 Fotos, max. 300 MB
+  Gesamtgröße (siehe `core/config.py`, `MAX_GALLERY_*`) - schützt vor
+  vollem `/data` bzw. Missbrauch.
+- Hochgeladene Dateien werden per Pillow tatsächlich als Bild geöffnet und
+  validiert (nicht nur Dateiendung/Content-Type geprüft) - eine als „.jpg“
+  getarnte Nicht-Bild-Datei wird abgelehnt.
+- Der Foto-Upload/-Abruf ist bewusst der **einzige** Backend-Endpunkt, der
+  auch auf dem öffentlichen Port 8090 ohne HA-Login erreichbar ist (Route
+  `/sites/<name>/api/*`, streng getrennt vom Admin-`/api/*`) - Gäste haben
+  ja keinen HA-Zugang. Es gibt darüber **kein** Löschen und keine sonstige
+  Admin-Funktion.
+- Moderation: unerwünschte Fotos einfach über den normalen "📂
+  Dateien"-Knopf der Site im Ordner `uploads/` löschen - die Galerie
+  entfernt den Eintrag automatisch beim nächsten Laden (kein eigener
+  Lösch-Endpunkt nötig).
+- Da der öffentliche Port keine Anmeldung kennt, ist die (lange, nicht
+  erratbare) URL der eigentliche Zugriffsschutz - wie bei allen Sites auf
+  Port 8090. Für sensiblere Anlässe ggf. den Link nur gezielt teilen statt
+  öffentlich zu posten.
+
 ## Sicherheitshinweise
 
 - Der Git-Access-Token wird **verschlüsselt** in der SQLite-DB
@@ -260,17 +298,35 @@ sichern"**-Button im Panel ein Backup ziehen.
 ## Roadmap (spätere Phasen)
 
 Reihenfolge auf Wunsch angepasst: PHP-Hosting vorgezogen, Python-Hosting
-zurückgestellt. Beide brauchen aber gleichermaßen einen eigenen
-Laufzeit-Container pro App und damit `docker_api: true` (siehe
-Sicherheitshinweis oben) – das Vorziehen ändert nichts an diesem Risiko,
-nur an der Reihenfolge, in der es angegangen wird.
+zurückgestellt.
 
-1. **Phase 2**: PHP-Hosting (Apache/Nginx + PHP-FPM) über je einen eigenen
-   Container pro App, SQLite-Datenbank-Verwaltung pro App – erfordert
-   `docker_api: true` im Add-on, wird als klar gekennzeichnete, optionale
-   Erweiterung mit eigener Bedrohungsanalyse eingeführt.
-2. **Phase 3**: Python-App-Hosting (Flask/FastAPI/Django) über je einen
-   eigenen Container pro App – gleiche Architektur/Risiko wie Phase 2, nur
-   für eine andere Laufzeitumgebung.
+1. **Phase 2 (schlanke Variante)**: PHP-Hosting über einen **einzigen,
+   geteilten PHP-FPM-Prozess** im Add-on-Container – läuft als weiterer
+   Subprozess, analog zum bereits vorhandenen Caddy, statt eigener
+   Container pro App. Jede PHP-App bekommt einen eigenen FPM-**Pool**
+   (eigener User/Group, eigenes RAM-Limit über `pm.max_children`), Caddy
+   leitet per `php_fastcgi` direkt an den passenden Pool weiter. Eigene
+   SQLite-Datenbank pro App wie ursprünglich geplant.
+   - **Kein `docker_api: true` nötig** – der ursprünglich größte
+     Kritikpunkt (Docker-Socket-Zugriff, siehe Sicherheitshinweis oben)
+     entfällt damit komplett.
+   - Deutlich schlanker als "ein Container pro App": kein zusätzlicher
+     OS-Layer und Container-Boot je App – spart RAM auf schwacher
+     Hardware (Zielgerät: i3-Notebook, 4GB RAM).
+   - Trade-off: geringere Isolation zwischen Apps als bei vollständiger
+     Container-Trennung – ein PHP-Interpreter mit mehreren Pools statt
+     komplett getrennter Umgebungen. Für kleine, vertrauenswürdige Apps
+     (eigene/Familien-/Vereinsprojekte) ein sinnvoller Kompromiss.
+   - Bewusst **nicht** für CMS-Systeme wie WordPress gedacht – die
+     brauchen eine eigene MySQL/MariaDB-Datenbank (siehe Phase 4) und
+     bringen durch ihr Plugin-Ökosystem ein deutlich größeres
+     Wartungs-/Sicherheitsprofil mit (häufige CVEs, laufender
+     Patch-Bedarf). Das wäre, falls überhaupt gewünscht, eine eigene,
+     gesondert zu bewertende Erweiterung – kein Teil von Phase 2.
+2. **Phase 3**: Python-App-Hosting (Flask/FastAPI/Django) – anders als PHP
+   nicht über ein einheitliches Pool-Modell abbildbar (unterschiedliche
+   Python-Versionen/Abhängigkeiten je App), daher weiterhin über je einen
+   eigenen Container pro App. Erfordert `docker_api: true` (siehe
+   Sicherheitshinweis oben).
 3. **Phase 4**: MariaDB/PostgreSQL-Provisioning, automatische
    Backup-Zeitpläne, Monitoring (CPU/RAM/Storage pro App), Live-Log-Viewer.

@@ -23,4 +23,14 @@ RESERVED_NAMES = {"api", "static", "admin", "assets", "healthz", "backup"}
 
 MAX_UPLOAD_BYTES = 200 * 1024 * 1024  # 200 MB
 
+# Fotogalerie-Sites: oeffentlich erreichbarer Upload ohne Login (siehe
+# api/gallery.py) - bewusst niedrige Limits, damit weder der Speicher der
+# Zielhardware (i3-Notebook, 4GB RAM) noch /data volllaufen kann.
+GALLERY_TEMPLATE_DIR = Path(__file__).parent.parent / "gallery_template"
+MAX_GALLERY_FILE_BYTES = 8 * 1024 * 1024  # 8 MB pro hochgeladenem Foto
+MAX_GALLERY_TOTAL_BYTES = 300 * 1024 * 1024  # 300 MB pro Galerie
+MAX_GALLERY_PHOTOS = 300  # Fotos pro Galerie
+GALLERY_MAX_DIMENSION = 1600  # px, laengste Kante nach Verkleinerung
+GALLERY_JPEG_QUALITY = 82
+
 SITES_DIR.mkdir(parents=True, exist_ok=True)

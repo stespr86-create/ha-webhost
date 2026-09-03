@@ -142,6 +142,22 @@ document.getElementById("upload-form").addEventListener("submit", async (event) 
 	}
 });
 
+document.getElementById("gallery-form").addEventListener("submit", async (event) => {
+	event.preventDefault();
+	const form = event.target;
+	const formData = new FormData(form);
+
+	const res = await fetch("api/sites/gallery", { method: "POST", body: formData });
+	if (res.ok) {
+		showStatus(`Galerie "${formData.get("name")}" angelegt.`);
+		form.reset();
+		loadSites();
+	} else {
+		const err = await res.json();
+		showStatus(`Fehler: ${err.detail}`, true);
+	}
+});
+
 document.getElementById("git-form").addEventListener("submit", async (event) => {
 	event.preventDefault();
 	const form = event.target;
