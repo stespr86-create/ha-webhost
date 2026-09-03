@@ -7,7 +7,9 @@ RUN apk add --no-cache \
         caddy \
         git \
         jpeg \
-        zlib
+        zlib \
+        mariadb \
+        mariadb-client
 
 WORKDIR /app
 

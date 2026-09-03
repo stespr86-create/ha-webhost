@@ -1,6 +1,15 @@
 #!/usr/bin/with-contenv bashio
 
 mkdir -p /data/sites
+mkdir -p /data/mariadb
+
+# MariaDB beim ersten Start initialisieren
+if [ ! -f /data/mariadb/initialized ]; then
+    bashio::log.info "Initialisiere MariaDB zum ersten Mal..."
+    mysql_install_db --user=root --datadir=/data/mariadb --skip-test-db >/dev/null 2>&1
+    touch /data/mariadb/initialized
+    bashio::log.info "MariaDB-Verzeichnis erstellt."
+fi
 
 if [ ! -f /data/Caddyfile ]; then
     bashio::log.info "Erzeuge initiale Caddyfile..."

@@ -1,0 +1,15 @@
+#!/usr/bin/with-contenv bashio
+
+bashio::log.info "Starte MariaDB..."
+
+# MariaDB mit /data/mariadb als Datenverzeichnis starten
+# --user=root, da im Container alles als root läuft
+# --datadir=/data/mariadb für Persistenz über Restarts hinweg
+mkdir -p /run/mysqld
+exec mysqld_safe \
+    --user=root \
+    --datadir=/data/mariadb \
+    --socket=/run/mysqld/mysqld.sock \
+    --port=3306 \
+    --skip-name-resolve \
+    --skip-external-locking
