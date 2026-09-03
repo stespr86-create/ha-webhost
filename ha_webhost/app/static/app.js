@@ -193,6 +193,22 @@ document.getElementById("git-form").addEventListener("submit", async (event) => 
 	}
 });
 
+document.getElementById("wordpress-form").addEventListener("submit", async (event) => {
+	event.preventDefault();
+	const form = event.target;
+	const formData = new FormData(form);
+
+	const res = await fetch("api/sites/wordpress", { method: "POST", body: formData });
+	if (res.ok) {
+		showStatus(`WordPress-Site "${formData.get("name")}" erstellt. Die Setup-Seite ist unter /sites/${formData.get("name")}/ erreichbar.`);
+		form.reset();
+		loadSites();
+	} else {
+		const err = await res.json();
+		showStatus(`Fehler: ${err.detail}`, true);
+	}
+});
+
 backupAllLink.addEventListener("click", (event) => {
 	if (backupAllLink.getAttribute("aria-disabled") === "true") {
 		event.preventDefault();

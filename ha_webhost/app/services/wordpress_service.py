@@ -132,9 +132,88 @@ require_once( ABSPATH . 'wp-settings.php' );
     logger.info(f"wp-config.php erstellt in {config_path}")
 
 
-def init_wordpress_site(site_dir: Path, site_name: str, db_name: str, db_user: str, db_password: str) -> None:
-    """Komplette WordPress-Initialisierung: Download, Entpacken, DB, Config."""
+def setup_wordpress_database(db_name: str, db_user: str, db_password: str, site_url: str) -> None:
+    """Erstellt WordPress-Tabellen und Basis-Konfiguration."""
+    logger.info(f"Richte WordPress-Datenbank '{db_name}' ein...")
+
+    # WordPress SQL Schema – vereinfacht (wp_users, wp_posts, wp_postmeta, wp_options)
+    setup_sql = f"""
+CREATE TABLE IF NOT EXISTS `{db_name}`.`wp_users` (
+    `ID` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+    `user_login` varchar(60) NOT NULL DEFAULT '',
+    `user_pass` varchar(255) NOT NULL DEFAULT '',
+    `user_email` varchar(100) NOT NULL DEFAULT '',
+    `user_registered` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
+    `display_name` varchar(250) NOT NULL DEFAULT '',
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `user_login` (`user_login`),
+    KEY `user_email` (`user_email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `{db_name}`.`wp_posts` (
+    `ID` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+    `post_author` bigint(20) unsigned NOT NULL DEFAULT '0',
+    `post_date` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
+    `post_content` longtext NOT NULL,
+    `post_title` text NOT NULL,
+    `post_name` varchar(200) NOT NULL DEFAULT '',
+    `post_status` varchar(20) NOT NULL DEFAULT 'publish',
+    `post_type` varchar(20) NOT NULL DEFAULT 'post',
+    PRIMARY KEY (`ID`),
+    KEY `post_name` (`post_name`(191)),
+    KEY `post_status` (`post_status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `{db_name}`.`wp_postmeta` (
+    `meta_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+    `post_id` bigint(20) unsigned NOT NULL DEFAULT '0',
+    `meta_key` varchar(255) DEFAULT NULL,
+    `meta_value` longtext,
+    PRIMARY KEY (`meta_id`),
+    KEY `post_id` (`post_id`),
+    KEY `meta_key` (`meta_key`(191))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `{db_name}`.`wp_options` (
+    `option_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+    `option_name` varchar(255) NOT NULL DEFAULT '',
+    `option_value` longtext NOT NULL,
+    PRIMARY KEY (`option_id`),
+    UNIQUE KEY `option_name` (`option_name`(191))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Basis-Optionen für WordPress
+INSERT INTO `{db_name}`.`wp_options` (`option_name`, `option_value`) VALUES
+    ('siteurl', '{site_url}'),
+    ('home', '{site_url}'),
+    ('admin_email', 'admin@example.com'),
+    ('blogname', 'WordPress Site'),
+    ('blogdescription', ''),
+    ('date_format', 'F j, Y'),
+    ('time_format', 'g:i a');
+"""
+
+    try:
+        result = subprocess.run(
+            ["mysql", "-u", "root"],
+            input=setup_sql.encode(),
+            capture_output=True,
+            timeout=30
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"MySQL-Fehler: {result.stderr.decode()}")
+        logger.info(f"WordPress-Tabellen in '{db_name}' erstellt.")
+    except Exception as e:
+        logger.error(f"Fehler beim Setup der DB: {e}")
+        raise
+
+
+def init_wordpress_site(site_dir: Path, site_name: str, db_name: str, db_user: str, db_password: str, site_url: str = None) -> None:
+    """Komplette WordPress-Initialisierung: Download, Entpacken, DB, Config, Tabellen."""
     logger.info(f"Initialisiere WordPress-Site '{site_name}'...")
+
+    if site_url is None:
+        site_url = f"http://localhost/sites/{site_name}"
 
     # 1. WordPress herunterladen
     wp_zip = download_wordpress()
@@ -147,5 +226,8 @@ def init_wordpress_site(site_dir: Path, site_name: str, db_name: str, db_user: s
 
     # 4. wp-config.php generieren
     generate_wp_config(db_name, db_user, db_password, site_name, site_dir)
+
+    # 5. WordPress-Datenbank-Schema erstellen
+    setup_wordpress_database(db_name, db_user, db_password, site_url)
 
     logger.info(f"WordPress-Site '{site_name}' erfolgreich initialisiert.")

@@ -156,7 +156,8 @@ def create_wordpress_site(session: Session, name: str) -> Site:
 
     try:
         site_dir = SITES_DIR / name
-        wordpress_service.init_wordpress_site(site_dir, name, db_name, db_user, db_password)
+        site_url = f"http://localhost/sites/{name}"
+        wordpress_service.init_wordpress_site(site_dir, name, db_name, db_user, db_password, site_url)
         site.status = SiteStatus.active
         site.last_error = None
     except Exception as exc:

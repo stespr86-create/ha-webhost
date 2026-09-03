@@ -122,6 +122,21 @@
 			</form>
 		</section>
 
+		<section class="card">
+			<h2>Neue Site: WordPress</h2>
+			<form id="wordpress-form">
+				<label>Name (a-z, 0-9, -)
+					<input type="text" name="name" required pattern="[a-z0-9][a-z0-9-]{1,30}[a-z0-9]" />
+				</label>
+				<button type="submit">WordPress installieren</button>
+			</form>
+			<p class="hint">
+				Installiert eine neue WordPress-Site mit automatisch erstellter
+				MariaDB-Datenbank. Nach der Installation ist die WordPress-Setup-Seite
+				unter <code>/sites/&lt;name&gt;/</code> erreichbar.
+			</p>
+		</section>
+
 		<div id="status-message" class="status" role="status"></div>
 
 		<input type="file" id="redeploy-upload-input" accept=".zip" hidden />
