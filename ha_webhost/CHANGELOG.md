@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.10
+
+- Neu: Dunkles, aufgeräumteres Design für das gesamte Panel (Farben,
+  Buttons, Badges, Tabellen, Datei-Manager) - keine funktionalen
+  Änderungen.
+- Fix: "Aktionen"-Spalte der Sites-Tabelle konnte auf schmaleren
+  Fenstern abgeschnitten werden (verschärft durch die nun länger
+  angezeigten externen URLs). Tabelle scrollt jetzt bei Bedarf
+  horizontal; lange URLs werden mit "..." gekürzt (Volltext als
+  Tooltip beim Hovern).
+
 ## 0.1.9
 
 - Neu: "🔄 Cache leeren & neu laden"-Button im Panel-Header. Löscht

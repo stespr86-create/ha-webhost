@@ -43,20 +43,22 @@
 				<h2>Sites</h2>
 				<a id="backup-all-link" href="api/sites/backup" class="button-link">📦 Alle Sites sichern</a>
 			</div>
-			<table id="sites-table">
-				<thead>
-					<tr>
-						<th>Name</th>
-						<th>Quelle</th>
-						<th>Status</th>
-						<th>URL</th>
-						<th>Aktionen</th>
-					</tr>
-				</thead>
-				<tbody id="sites-body">
-					<tr><td colspan="5">Lade Sites...</td></tr>
-				</tbody>
-			</table>
+			<div class="table-scroll">
+				<table id="sites-table">
+					<thead>
+						<tr>
+							<th>Name</th>
+							<th>Quelle</th>
+							<th>Status</th>
+							<th>URL</th>
+							<th>Aktionen</th>
+						</tr>
+					</thead>
+					<tbody id="sites-body">
+						<tr><td colspan="5">Lade Sites...</td></tr>
+					</tbody>
+				</table>
+			</div>
 		</section>
 
 		<section class="card">
@@ -131,7 +133,7 @@
 				<div class="fm-editor-header">
 					<strong id="fm-editor-filename"></strong>
 					<div>
-						<button type="button" id="fm-editor-save">Speichern</button>
+						<button type="button" id="fm-editor-save" class="btn-primary">Speichern</button>
 						<button type="button" id="fm-editor-cancel">Schließen</button>
 					</div>
 				</div>

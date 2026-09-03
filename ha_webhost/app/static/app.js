@@ -38,14 +38,17 @@ async function loadSites() {
 			const url = `sites/${site.name}/`;
 			const externalUrl = publicBaseUrl ? `${publicBaseUrl}/sites/${site.name}/` : null;
 			const externalLinkHtml = externalUrl
-				? `<br /><a href="${escapeHtml(externalUrl)}" target="_blank" rel="noopener">🌐 ${escapeHtml(externalUrl)}</a>`
+				? `<a class="url-link" href="${escapeHtml(externalUrl)}" target="_blank" rel="noopener" title="${escapeHtml(externalUrl)}">🌐 ${escapeHtml(externalUrl)}</a>`
 				: "";
 			return `
 				<tr>
 					<td>${site.name}</td>
 					<td>${site.source_type}</td>
 					<td><span class="badge badge-${site.status}">${site.status}</span></td>
-					<td><a href="${url}" target="_blank" rel="noopener">🏠 ${url}</a>${externalLinkHtml}</td>
+					<td>
+						<a class="url-link" href="${url}" target="_blank" rel="noopener" title="${escapeHtml(url)}">🏠 ${url}</a>
+						${externalLinkHtml}
+					</td>
 					<td>
 						<button data-action="files" data-name="${site.name}">📂 Dateien</button>
 						${site.source_type === "git" ? `<button data-action="redeploy" data-name="${site.name}">Redeploy</button>` : ""}
