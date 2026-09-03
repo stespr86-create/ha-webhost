@@ -15,6 +15,12 @@ function escapeHtml(value) {
 	return String(value).replace(/[&<>"']/g, (ch) => HTML_ESCAPES[ch]);
 }
 
+function formatBytes(bytes) {
+	if (bytes < 1024) return `${bytes} B`;
+	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function showStatus(message, isError = false) {
 	statusMessage.textContent = message;
 	statusMessage.className = "status" + (isError ? " error" : " success");
@@ -331,7 +337,7 @@ async function fmLoadList() {
 	fmFileList.innerHTML = data.entries
 		.map((entry) => {
 			const icon = entry.is_dir ? "📁" : "📄";
-			const sizeLabel = entry.is_dir ? "" : `<span class="fm-size">${entry.size} B</span>`;
+			const sizeLabel = entry.is_dir ? "" : `<span class="fm-size">${formatBytes(entry.size)}</span>`;
 			const safeName = escapeHtml(entry.name);
 			return `
 				<li class="fm-entry" data-name="${safeName}" data-is-dir="${entry.is_dir}">

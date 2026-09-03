@@ -351,6 +351,18 @@ h1, h2 {
 	text-overflow: ellipsis;
 }
 
+.card-download {
+	display: block;
+	margin-top: 0.3rem;
+	padding: 0 0.15rem;
+	font-family: "Nunito", sans-serif;
+	font-weight: 700;
+	font-size: 0.72rem;
+	color: var(--accent-2);
+	text-decoration: none;
+}
+.card-download:hover { color: var(--accent); text-decoration: underline; }
+
 /* ---------- Google-/Extern-Karte ---------- */
 
 .gp-card {
@@ -454,9 +466,27 @@ footer {
 	text-align: center;
 }
 
+.lightbox-actions {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 1.2rem;
+	margin-top: 0.7rem;
+}
+
+.lightbox-download {
+	background: none;
+	border: none;
+	color: var(--accent-2);
+	font-family: "Nunito", sans-serif;
+	font-weight: 700;
+	font-size: 0.85rem;
+	text-decoration: none;
+	cursor: pointer;
+}
+.lightbox-download:hover { color: var(--accent); }
+
 .lightbox-close {
-	display: block;
-	margin: 0.7rem auto 0;
 	background: none;
 	border: none;
 	color: var(--ink-soft);

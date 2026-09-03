@@ -21,6 +21,7 @@
 	var lightboxMedia = document.getElementById("lightbox-media");
 	var lightboxCaption = document.getElementById("lightbox-caption");
 	var lightboxClose = document.getElementById("lightbox-close");
+	var lightboxDownload = document.getElementById("lightbox-download");
 	var lightboxPrev = document.getElementById("lightbox-prev");
 	var lightboxNext = document.getElementById("lightbox-next");
 
@@ -52,6 +53,7 @@
 					'<figure class="photo-card" style="--rot:' + rot + 'deg" data-index="' + i + '">' +
 					'<div class="photo-frame"><img src="' + src + '" alt="' + escapeHtml(caption) + '" loading="lazy"></div>' +
 					'<figcaption><span class="cap-text">' + escapeHtml(caption) + "</span></figcaption>" +
+					'<a class="card-download" href="' + src + '" download="foto-' + (i + 1) + '.jpg" aria-label="Foto herunterladen">⬇ Herunterladen</a>' +
 					"</figure>"
 				);
 			})
@@ -59,6 +61,7 @@
 	}
 
 	galleryGrid.addEventListener("click", function (e) {
+		if (e.target.closest(".card-download")) return;
 		var card = e.target.closest(".photo-card");
 		if (!card) return;
 		openLightbox(Number(card.dataset.index));
@@ -72,6 +75,8 @@
 		var caption = photo.caption || "Vom Fest";
 		lightboxMedia.innerHTML = '<img src="' + src + '" alt="' + escapeHtml(caption) + '">';
 		lightboxCaption.textContent = caption;
+		lightboxDownload.href = src;
+		lightboxDownload.download = "foto-" + (currentIndex + 1) + ".jpg";
 		var hasMultiple = currentPhotos.length > 1;
 		lightboxPrev.hidden = !hasMultiple;
 		lightboxNext.hidden = !hasMultiple;

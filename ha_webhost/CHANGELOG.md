@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.13
+
+- Fotogalerie: Download-Knopf unter jedem Foto in der Fotowand (Raster)
+  sowie in der Lightbox - Fotos lassen sich jetzt auch einzeln
+  herunterladen, nicht nur als Gesamt-ZIP.
+- Datei-Manager: Dateigrößen werden jetzt als KB/MB statt in rohen Bytes
+  angezeigt.
+
 ## 0.1.12
 
 - Fotogalerie: Lightbox zeigt Fotos jetzt deutlich größer (bis 80% der
