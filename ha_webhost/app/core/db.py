@@ -15,6 +15,10 @@ _NEW_SITE_COLUMNS = {
     "wordpress_db_name": "VARCHAR",
     "wordpress_db_user": "VARCHAR",
     "wordpress_db_password": "VARCHAR",
+    "wordpress_admin_user": "VARCHAR",
+    "wordpress_admin_password": "VARCHAR",
+    "wordpress_admin_email": "VARCHAR",
+    "wordpress_blog_name": "VARCHAR",
 }
 
 

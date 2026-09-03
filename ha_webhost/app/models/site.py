@@ -34,6 +34,10 @@ class Site(SQLModel, table=True):
     wordpress_db_name: Optional[str] = None
     wordpress_db_user: Optional[str] = None
     wordpress_db_password: Optional[str] = None
+    wordpress_admin_user: Optional[str] = None
+    wordpress_admin_password: Optional[str] = None
+    wordpress_admin_email: Optional[str] = None
+    wordpress_blog_name: Optional[str] = None
     status: SiteStatus = SiteStatus.active
     created_at: datetime = Field(default_factory=_utcnow)
     updated_at: datetime = Field(default_factory=_utcnow)
@@ -58,6 +62,9 @@ class SitePublic(SQLModel):
     gallery_link_label: Optional[str] = None
     wordpress_db_name: Optional[str] = None
     wordpress_db_user: Optional[str] = None
+    wordpress_admin_user: Optional[str] = None
+    wordpress_admin_email: Optional[str] = None
+    wordpress_blog_name: Optional[str] = None
     status: SiteStatus = SiteStatus.active
     created_at: datetime
     updated_at: datetime

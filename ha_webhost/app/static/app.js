@@ -46,9 +46,12 @@ async function loadSites() {
 			const externalLinkHtml = externalUrl
 				? `<a class="url-link" href="${escapeHtml(externalUrl)}" target="_blank" rel="noopener" title="${escapeHtml(externalUrl)}">🌐 ${escapeHtml(externalUrl)}</a>`
 				: "";
+			const wpInfo = site.source_type === "wordpress" && site.wordpress_admin_user
+				? `<div style="font-size: 0.85em; color: #666; margin-top: 2px;">Admin: ${site.wordpress_admin_user}</div>`
+				: "";
 			return `
 				<tr>
-					<td>${site.name}</td>
+					<td>${site.name}${wpInfo}</td>
 					<td>${site.source_type}</td>
 					<td><span class="badge badge-${site.status}">${site.status}</span></td>
 					<td>
@@ -197,15 +200,20 @@ document.getElementById("wordpress-form").addEventListener("submit", async (even
 	event.preventDefault();
 	const form = event.target;
 	const formData = new FormData(form);
+	const siteName = formData.get("name");
+	const blogName = formData.get("blog_name") || "WordPress";
+	const adminEmail = formData.get("admin_email") || "admin@example.com";
 
 	const res = await fetch("api/sites/wordpress", { method: "POST", body: formData });
 	if (res.ok) {
-		showStatus(`WordPress-Site "${formData.get("name")}" erstellt. Die Setup-Seite ist unter /sites/${formData.get("name")}/ erreichbar.`);
+		const site = await res.json();
+		const adminInfo = site.wordpress_admin_user ? ` Anmeldung: ${site.wordpress_admin_user} @ /sites/${siteName}/wp-login.php` : "";
+		showStatus(`✅ WordPress-Site "${siteName}" erstellt.${adminInfo}`);
 		form.reset();
 		loadSites();
 	} else {
 		const err = await res.json();
-		showStatus(`Fehler: ${err.detail}`, true);
+		showStatus(`❌ Fehler: ${err.detail}`, true);
 	}
 });
 

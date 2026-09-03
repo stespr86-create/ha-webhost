@@ -128,12 +128,18 @@
 				<label>Name (a-z, 0-9, -)
 					<input type="text" name="name" required pattern="[a-z0-9][a-z0-9-]{1,30}[a-z0-9]" />
 				</label>
+				<label>Blog-Name (optional)
+					<input type="text" name="blog_name" placeholder="My WordPress Site" />
+				</label>
+				<label>Admin-Email (optional)
+					<input type="email" name="admin_email" placeholder="admin@example.com" />
+				</label>
 				<button type="submit">WordPress installieren</button>
 			</form>
 			<p class="hint">
 				Installiert eine neue WordPress-Site mit automatisch erstellter
-				MariaDB-Datenbank. Nach der Installation ist die WordPress-Setup-Seite
-				unter <code>/sites/&lt;name&gt;/</code> erreichbar.
+				MariaDB-Datenbank und Admin-Konto (Benutzer: admin). Nach der Installation
+				ist die WordPress-Seite unter <code>/sites/&lt;name&gt;/</code> erreichbar.
 			</p>
 		</section>
 

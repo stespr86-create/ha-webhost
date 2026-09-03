@@ -130,7 +130,12 @@ def create_gallery_site(
     return site
 
 
-def create_wordpress_site(session: Session, name: str) -> Site:
+def create_wordpress_site(
+    session: Session,
+    name: str,
+    blog_name: str = "My WordPress Site",
+    admin_email: str = "admin@example.com"
+) -> Site:
     """Legt eine WordPress-Site an: lädt WordPress herunter, erstellt Datenbank
     + Benutzer, generiert wp-config.php."""
     name = validate_site_name(name)
@@ -141,6 +146,7 @@ def create_wordpress_site(session: Session, name: str) -> Site:
     db_name = f"wp_{name.replace('-', '_')}"
     db_user = f"wp_{name.replace('-', '_')}"
     db_password = crypto.generate_random_password(32)
+    admin_password = crypto.generate_random_password(16)
 
     site = Site(
         name=name,
@@ -149,6 +155,10 @@ def create_wordpress_site(session: Session, name: str) -> Site:
         wordpress_db_name=db_name,
         wordpress_db_user=db_user,
         wordpress_db_password=crypto.encrypt(db_password),
+        wordpress_admin_user="admin",
+        wordpress_admin_password=crypto.encrypt(admin_password),
+        wordpress_admin_email=admin_email,
+        wordpress_blog_name=blog_name,
     )
     session.add(site)
     session.commit()
@@ -157,7 +167,12 @@ def create_wordpress_site(session: Session, name: str) -> Site:
     try:
         site_dir = SITES_DIR / name
         site_url = f"http://localhost/sites/{name}"
-        wordpress_service.init_wordpress_site(site_dir, name, db_name, db_user, db_password, site_url)
+        wordpress_service.init_wordpress_site(
+            site_dir, name, db_name, db_user, db_password,
+            site_url=site_url,
+            admin_password=admin_password,
+            admin_email=admin_email
+        )
         site.status = SiteStatus.active
         site.last_error = None
     except Exception as exc:
