@@ -13,7 +13,7 @@ from core.crypto import DecryptionError
 from core.db import get_session
 from core.security import InvalidSiteName, PathTraversal, UnsafeArchive
 from models.site import SitePublic, SiteStatus, SourceType
-from services import site_service, zip_service, backup_service, health_service, wordpress_updates_service
+from services import site_service, zip_service, backup_service, health_service, wordpress_updates_service, wordpress_validator
 from services.git_service import GitError
 
 router = APIRouter(prefix="/api/sites", tags=["sites"])
@@ -224,6 +224,31 @@ def backup_wordpress(name: str, session: Session = Depends(get_session)):
         }
     except Exception as exc:
         raise HTTPException(422, f"Backup fehlgeschlagen: {str(exc)}") from exc
+
+
+@router.get("/system/validate-wordpress", response_model=dict)
+def validate_wordpress_system(session: Session = Depends(get_session)):
+    """Validiert dass alle WordPress-Sites isoliert sind und sauber konfiguriert."""
+    try:
+        # Alle WordPress-Sites sammeln
+        sites = site_service.list_sites(session)
+        wp_sites = [s for s in sites if s.source_type == SourceType.wordpress]
+
+        if not wp_sites:
+            return {"status": "no_wordpress_sites", "count": 0}
+
+        # Directories sammeln
+        site_dirs = [SITES_DIR / s.name for s in wp_sites]
+
+        # Validierung durchführen
+        validation = wordpress_validator.validate_multiple_sites_isolation(site_dirs)
+        return {
+            "status": "validated",
+            "wordpress_sites": len(wp_sites),
+            **validation
+        }
+    except Exception as exc:
+        raise HTTPException(422, f"Validierung fehlgeschlagen: {str(exc)}") from exc
 
 
 @router.delete("/{name}", status_code=204)

@@ -71,11 +71,20 @@ FLUSH PRIVILEGES;
             timeout=10
         )
         if result.returncode != 0:
-            raise RuntimeError(f"MySQL-Fehler: {result.stderr.decode()}")
+            stderr = result.stderr.decode().strip()
+            # Bessere Fehler-Messages
+            if "Can't connect to local server" in stderr:
+                raise RuntimeError("MariaDB-Server läuft nicht. Bitte stellen Sie sicher, dass der MariaDB-Service gestartet ist.")
+            elif "Authentication plugin" in stderr:
+                raise RuntimeError("MariaDB-Authentifizierungsfehler. Prüfen Sie die Datenbank-Credentials.")
+            else:
+                raise RuntimeError(f"Fehler bei Datenbank-Erstellung: {stderr}")
         logger.info(f"Datenbank '{db_name}' und Benutzer '{db_user}' erstellt.")
+    except RuntimeError:
+        raise  # Re-raise RuntimeErrors
     except Exception as e:
         logger.error(f"Fehler beim Erstellen von DB/User: {e}")
-        raise
+        raise RuntimeError(f"Unerwarteter Fehler bei Datenbank-Setup: {str(e)}")
 
 
 def generate_wp_config(
