@@ -77,47 +77,78 @@ Sites lassen sich über Port 8090 öffentlich freigeben, **ohne** das
 Admin-Panel mit zu exponieren (siehe oben, strikt getrennter Caddy-Listener,
 nur `/sites/<name>/*`, sonst `404`).
 
-**Wichtig, falls bereits andere Dienste über Tailscale freigegeben sind**
-(z.B. über die neuere "Services"/`svc:name`-Funktion): Das hier beschriebene
-Vorgehen nutzt bewusst den **klassischen, seit Jahren stabilen**
-Funnel-Mechanismus direkt auf dem Geräte-Hostnamen (`tailscale serve` +
-`tailscale funnel <port> on`), nicht die neuere Beta-"Services"-Funktion –
-beide Mechanismen laufen unabhängig nebeneinander und beeinflussen sich
-nicht, solange unterschiedliche Ports verwendet werden.
+**Tailscale Funnel erlaubt nur drei öffentliche Ports: 443, 8443, 10000.**
+Dieses Projekt nutzt bewusst **Port 10000** dafür (nicht 8443!) – dazu
+gleich mehr.
 
-**Voraussetzung:** Die ACL-Policy des Tailnets muss Funnel bereits erlauben
-(`"nodeAttrs": [{"target": ["autogroup:member"], "attr": ["funnel"]}]` oder
-äquivalent für das jeweilige Gerät) – ohne das schlägt `tailscale funnel`
-mit einer Fehlermeldung fehl. In den meisten bestehenden Setups, die schon
-einen anderen Dienst per Funnel freigeben, ist das bereits der Fall.
+### ⚠️ Vorher unbedingt prüfen: belegt ein anderer Dienst schon einen dieser Ports?
 
-**Einrichtung** (auf dem HA-Host, z.B. über das "Advanced SSH & Web
-Terminal"-Add-on):
+**Konkret bei uns passiert:** Auf dem Referenzsystem war Port 8443 bereits
+für einen anderen Dienst (n8n/Telegram-Webhook) reserviert. Ein
+`tailscale serve --https=8443 ...` für WebHost hat diese bestehende
+Zuordnung **kommentarlos überschrieben** – der andere Dienst war damit
+nicht mehr erreichbar, ohne dass eine Fehlermeldung kam. Tailscale warnt
+davor nicht.
+
+**Vor der Einrichtung immer erst prüfen:**
 
 ```bash
-# 1. Lokalen Port 8090 als HTTPS-Ziel auf Port 8443 konfigurieren
-#    (443 bewusst vermieden, falls dort schon ein anderer Dienst liegt)
-tailscale serve --bg --https=8443 http://127.0.0.1:8090
+tailscale funnel status
+```
 
-# 2. Oeffentlich schalten
-tailscale funnel 8443 on
+Zeigt das bereits einen Eintrag für Port 8443 (oder 443), **diesen Port
+nicht für WebHost verwenden** – auf **10000** ausweichen (das einzige der
+drei Ports, der bei uns frei war). Prüft man das nicht und ein Konflikt
+tritt trotzdem auf: der andere Dienst fällt sofort und ohne
+Fehlermeldung aus.
 
-# Status pruefen
+### Zwei Befehle nötig – beide, nicht nur einen
+
+`tailscale serve` (legt die lokale Zuordnung fest) und `tailscale funnel`
+(schaltet sie öffentlich) sind **zwei getrennte Schritte**. Wird nach einer
+Änderung nur `serve` erneut ausgeführt, wird die Funnel-Freigabe dabei
+**entfernt** ("Removing Funnel..." in der Ausgabe) – der Port ist dann nur
+noch tailnet-intern erreichbar, nicht mehr öffentlich. Immer **beide**
+Befehle zusammen ausführen:
+
+```bash
+tailscale serve --bg --https=10000 http://127.0.0.1:8090
+tailscale funnel --bg --https=10000 8090
+```
+
+Wichtig zur Syntax (hat sich mit neueren Tailscale-Versionen geändert,
+`tailscale funnel --help` zeigt die für die jeweils installierte Version
+gültige Form): `<target>` ist immer der **lokale** Port/URL (hier 8090),
+nicht der öffentliche. Der öffentliche Port wird über `--https=` gesetzt.
+
+**Falls `tailscale` nicht direkt im Terminal gefunden wird** (z.B. im HA-OS
+Host-Terminal): Der Tailscale-Client läuft im eigenen Add-on-Container,
+nicht auf dem nackten Host. Dorthinein wechseln:
+
+```bash
+docker ps | grep -i tailscale        # Container-Namen finden
+docker exec -it <container-name> sh  # hinein wechseln
+find / -name "tailscale" -type f 2>/dev/null   # Pfad zur Binary finden (oft /opt/tailscale)
+```
+
+**Status jederzeit prüfen:**
+
+```bash
 tailscale funnel status
 ```
 
 Danach sind alle aktiven Sites erreichbar unter:
 
 ```
-https://<euer-tailscale-hostname>:8443/sites/<name>/
+https://<euer-tailscale-hostname>:10000/sites/<name>/
 ```
 
-(z.B. `https://homeassistant.tailf85481.ts.net:8443/sites/gresu-feuerwehrmann/`)
+(z.B. `https://homeassistant.tailf85481.ts.net:10000/sites/gresu-feuerwehrmann/`)
 
 **Wieder deaktivieren:**
 
 ```bash
-tailscale funnel 8443 off
+tailscale funnel --https=10000 off
 ```
 
 **Sicherheitshinweis:** Sobald Funnel aktiv ist, ist Port 8090 (und damit
