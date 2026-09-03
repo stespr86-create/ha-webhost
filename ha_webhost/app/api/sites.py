@@ -13,7 +13,7 @@ from core.crypto import DecryptionError
 from core.db import get_session
 from core.security import InvalidSiteName, PathTraversal, UnsafeArchive
 from models.site import SitePublic, SiteStatus, SourceType
-from services import site_service, zip_service, backup_service, health_service, wordpress_updates_service, wordpress_validator
+from services import site_service, zip_service, backup_service, health_service, wordpress_updates_service, wordpress_validator, wordpress_marketplace
 from services.git_service import GitError
 
 router = APIRouter(prefix="/api/sites", tags=["sites"])
@@ -224,6 +224,132 @@ def backup_wordpress(name: str, session: Session = Depends(get_session)):
         }
     except Exception as exc:
         raise HTTPException(422, f"Backup fehlgeschlagen: {str(exc)}") from exc
+
+
+@router.get("/{name}/plugins/search", response_model=list)
+def search_plugins(name: str, q: str = "", session: Session = Depends(get_session)):
+    """Sucht WordPress-Plugins im Marketplace (WordPress.org)."""
+    site = site_service.get_site(session, name)
+    if not site:
+        raise HTTPException(404, f"Site '{name}' nicht gefunden.")
+    if site.source_type != SourceType.wordpress:
+        raise HTTPException(400, "Nur WordPress-Sites haben Plugin-Marketplace.")
+
+    if not q or len(q) < 2:
+        raise HTTPException(400, "Suchbegriff zu kurz (mindestens 2 Zeichen)")
+
+    try:
+        results = wordpress_marketplace.WordPressMarketplace.search_plugins(q, limit=20)
+        return results
+    except Exception as exc:
+        raise HTTPException(422, f"Plugin-Suche fehlgeschlagen: {str(exc)}") from exc
+
+
+@router.get("/{name}/themes/search", response_model=list)
+def search_themes(name: str, q: str = "", session: Session = Depends(get_session)):
+    """Sucht WordPress-Themes im Marketplace (WordPress.org)."""
+    site = site_service.get_site(session, name)
+    if not site:
+        raise HTTPException(404, f"Site '{name}' nicht gefunden.")
+    if site.source_type != SourceType.wordpress:
+        raise HTTPException(400, "Nur WordPress-Sites haben Theme-Marketplace.")
+
+    if not q or len(q) < 2:
+        raise HTTPException(400, "Suchbegriff zu kurz (mindestens 2 Zeichen)")
+
+    try:
+        results = wordpress_marketplace.WordPressMarketplace.search_themes(q, limit=20)
+        return results
+    except Exception as exc:
+        raise HTTPException(422, f"Theme-Suche fehlgeschlagen: {str(exc)}") from exc
+
+
+@router.post("/{name}/plugins/install", response_model=dict)
+def install_plugin(name: str, slug: str = Form(...), activate: bool = Form(True), session: Session = Depends(get_session)):
+    """Installiert ein Plugin aus dem Marketplace."""
+    site = site_service.get_site(session, name)
+    if not site:
+        raise HTTPException(404, f"Site '{name}' nicht gefunden.")
+    if site.source_type != SourceType.wordpress:
+        raise HTTPException(400, "Nur WordPress-Sites können Plugins installieren.")
+
+    try:
+        site_dir = SITES_DIR / name
+        success = wordpress_marketplace.WordPressMarketplace.install_plugin(site_dir, slug, activate)
+        return {"status": "success" if success else "failed", "plugin": slug, "activated": activate}
+    except Exception as exc:
+        raise HTTPException(422, f"Plugin-Installation fehlgeschlagen: {str(exc)}") from exc
+
+
+@router.post("/{name}/themes/install", response_model=dict)
+def install_theme(name: str, slug: str = Form(...), activate: bool = Form(False), session: Session = Depends(get_session)):
+    """Installiert ein Theme aus dem Marketplace."""
+    site = site_service.get_site(session, name)
+    if not site:
+        raise HTTPException(404, f"Site '{name}' nicht gefunden.")
+    if site.source_type != SourceType.wordpress:
+        raise HTTPException(400, "Nur WordPress-Sites können Themes installieren.")
+
+    try:
+        site_dir = SITES_DIR / name
+        success = wordpress_marketplace.WordPressMarketplace.install_theme(site_dir, slug, activate)
+        return {"status": "success" if success else "failed", "theme": slug, "activated": activate}
+    except Exception as exc:
+        raise HTTPException(422, f"Theme-Installation fehlgeschlagen: {str(exc)}") from exc
+
+
+@router.get("/{name}/plugins/list", response_model=list)
+def list_plugins(name: str, session: Session = Depends(get_session)):
+    """Listet installierte Plugins einer Site."""
+    site = site_service.get_site(session, name)
+    if not site:
+        raise HTTPException(404, f"Site '{name}' nicht gefunden.")
+    if site.source_type != SourceType.wordpress:
+        raise HTTPException(400, "Nur WordPress-Sites haben Plugins.")
+
+    try:
+        site_dir = SITES_DIR / name
+        plugins = wordpress_marketplace.WordPressMarketplace.list_installed_plugins(site_dir)
+        return plugins
+    except Exception as exc:
+        raise HTTPException(422, f"Fehler beim Auflisten: {str(exc)}") from exc
+
+
+@router.get("/{name}/themes/list", response_model=list)
+def list_themes(name: str, session: Session = Depends(get_session)):
+    """Listet installierte Themes einer Site."""
+    site = site_service.get_site(session, name)
+    if not site:
+        raise HTTPException(404, f"Site '{name}' nicht gefunden.")
+    if site.source_type != SourceType.wordpress:
+        raise HTTPException(400, "Nur WordPress-Sites haben Themes.")
+
+    try:
+        site_dir = SITES_DIR / name
+        themes = wordpress_marketplace.WordPressMarketplace.list_installed_themes(site_dir)
+        return themes
+    except Exception as exc:
+        raise HTTPException(422, f"Fehler beim Auflisten: {str(exc)}") from exc
+
+
+@router.delete("/{name}/plugins/{slug}", status_code=204)
+def uninstall_plugin(name: str, slug: str, session: Session = Depends(get_session)):
+    """Deinstalliert ein Plugin."""
+    site = site_service.get_site(session, name)
+    if not site:
+        raise HTTPException(404, f"Site '{name}' nicht gefunden.")
+    if site.source_type != SourceType.wordpress:
+        raise HTTPException(400, "Nur WordPress-Sites haben Plugins.")
+
+    try:
+        site_dir = SITES_DIR / name
+        success = wordpress_marketplace.WordPressMarketplace.uninstall_plugin(site_dir, slug)
+        if not success:
+            raise HTTPException(422, f"Plugin '{slug}' konnte nicht gelöscht werden.")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(422, f"Fehler beim Löschen: {str(exc)}") from exc
 
 
 @router.get("/system/validate-wordpress", response_model=dict)
