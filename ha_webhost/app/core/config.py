@@ -11,6 +11,12 @@ CADDY_CONFIG_PATH = DATA_DIR / "Caddyfile"
 BACKEND_INTERNAL_PORT = 8001
 CADDY_INGRESS_PORT = 8000
 
+# Zweiter, strikt getrennter Caddy-Listener: liefert AUSSCHLIESSLICH
+# /sites/<name>/* aus, niemals Admin-UI oder /api/*. Gedacht fuer
+# oeffentliche Erreichbarkeit (z.B. via Tailscale Funnel) ohne dabei
+# das Admin-Panel mit zu exponieren.
+CADDY_PUBLIC_SITES_PORT = 8090
+
 # 3-32 Zeichen, nur Kleinbuchstaben/Ziffern/Bindestrich, kein Start/Ende mit '-'
 SITE_NAME_PATTERN = r"^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$"
 RESERVED_NAMES = {"api", "static", "admin", "assets", "healthz", "backup"}

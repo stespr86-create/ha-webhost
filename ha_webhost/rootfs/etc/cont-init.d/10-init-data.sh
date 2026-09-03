@@ -24,5 +24,15 @@ if [ ! -f /data/Caddyfile ]; then
 		reverse_proxy 127.0.0.1:8001
 	}
 }
+
+:8090 {
+	log {
+		output stdout
+	}
+
+	handle {
+		respond 404
+	}
+}
 EOF
 fi

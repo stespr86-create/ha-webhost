@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.7
+
+- Neu: Zweiter, strikt getrennter Caddy-Listener auf Port 8090 - liefert
+  ausschließlich `/sites/<name>/*` aus, niemals Admin-UI oder `/api/*`.
+  Gedacht für öffentliche Freigabe (z.B. via Tailscale Funnel), ohne
+  dabei das Admin-Panel zu exponieren.
+- Sicherheitsfix während der Entwicklung gefunden und behoben: Ein
+  Caddy-Server-Block ohne jede Route antwortet mit `200 leer`, nicht
+  automatisch mit `404` - der ursprüngliche Entwurf hätte dadurch
+  versehentlich Admin-UI/API auch auf Port 8090 exponiert. Jetzt
+  expliziter `respond 404`-Catch-all, verifiziert dass Admin-UI/API auf
+  8090 durchgehend 404 liefern, während Sites korrekt ausgeliefert werden.
+- Doku: Anleitung für Tailscale Funnel auf Port 8090 ergänzt (klassischer
+  `tailscale serve`/`funnel`-Mechanismus, unabhängig von der neueren
+  Services-Funktion, um bestehende Freigaben nicht zu stören).
+
 ## 0.1.6
 
 - Neu: "🔄 Update"-Button für Upload-Sites — erneutes Hochladen einer ZIP

@@ -2,16 +2,24 @@ import logging
 import subprocess
 from typing import Iterable
 
-from core.config import BACKEND_INTERNAL_PORT, CADDY_CONFIG_PATH, SITES_DIR
+from core.config import (
+    BACKEND_INTERNAL_PORT,
+    CADDY_CONFIG_PATH,
+    CADDY_PUBLIC_SITES_PORT,
+    SITES_DIR,
+)
 
 logger = logging.getLogger("webhost.caddy")
 
-HEADER = """\
+GLOBAL_OPTS = """\
 {
 \tadmin 127.0.0.1:2019
 \tauto_https off
 }
 
+"""
+
+INGRESS_HEADER = """\
 :8000 {
 \tlog {
 \t\toutput stdout
@@ -24,6 +32,34 @@ HEADER = """\
 
 """
 
+INGRESS_FOOTER = """\
+\thandle {{
+\t\treverse_proxy 127.0.0.1:{backend_port}
+\t}}
+}}
+"""
+
+# Oeffentlicher Listener: NUR Site-Inhalte, kein Fallback auf das Backend.
+# Wichtig: Ein Caddy-Server-Block ohne jede Route antwortet NICHT
+# automatisch mit 404, sondern mit "200 leer"! Deshalb hier ein
+# EXPLIZITER catch-all 404-Handler statt uns auf "keine Route matcht"
+# zu verlassen - Admin-UI und /api/* duerfen auf diesem Port unter
+# keinen Umstaenden erreichbar sein, auch nicht durch einen Konfigfehler.
+PUBLIC_HEADER = """\
+:{public_port} {{
+\tlog {{
+\t\toutput stdout
+\t}}
+
+"""
+
+PUBLIC_FOOTER = """\
+\thandle {
+\t\trespond 404
+\t}
+}
+"""
+
 SITE_BLOCK = """\
 \thandle_path /sites/{name}/* {{
 \t\troot * {root}
@@ -33,19 +69,17 @@ SITE_BLOCK = """\
 
 """
 
-FOOTER = """\
-\thandle {{
-\t\treverse_proxy 127.0.0.1:{backend_port}
-\t}}
-}}
-"""
-
 
 def render_caddyfile(site_names: Iterable[str]) -> str:
-    blocks = "".join(
-        SITE_BLOCK.format(name=name, root=str(SITES_DIR / name)) for name in sorted(site_names)
+    names = sorted(site_names)
+    site_blocks = "".join(SITE_BLOCK.format(name=name, root=str(SITES_DIR / name)) for name in names)
+
+    ingress_block = INGRESS_HEADER + site_blocks + INGRESS_FOOTER.format(backend_port=BACKEND_INTERNAL_PORT)
+    public_block = (
+        PUBLIC_HEADER.format(public_port=CADDY_PUBLIC_SITES_PORT) + site_blocks + PUBLIC_FOOTER
     )
-    return HEADER + blocks + FOOTER.format(backend_port=BACKEND_INTERNAL_PORT)
+
+    return GLOBAL_OPTS + ingress_block + "\n" + public_block
 
 
 def write_and_reload(site_names: Iterable[str]) -> None:

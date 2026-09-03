@@ -17,6 +17,9 @@ im HA-Ingress-Panel.
 - Einfacher Datei-Browser/-Editor über die API (`/api/files/...`)
 - Manuelles Backup aller Sites als ein ZIP-Download ("📦 Alle Sites
   sichern"-Button im Panel, `.git`-Verzeichnisse werden ausgeschlossen)
+- Zwei getrennte Zugriffswege: Port 8000 (Ingress, Admin-UI + API + Sites,
+  HA-Login nötig) und Port 8090 (**nur** `/sites/<name>/*`, kein
+  Admin-Zugriff - für öffentliche Freigabe gedacht, siehe unten)
 - Reverse Proxy (Caddy) inkl. SPA-Fallback (`try_files … /index.html`)
 - Läuft komplett ohne Docker-Socket-Zugriff → kein erhöhtes Sicherheitsrisiko
   für den Host
@@ -67,6 +70,60 @@ i.d.R. eigene DB-Anbindung brauchen – siehe Roadmap.
 Alternativ für lokale Entwicklung ganz ohne Git-Hosting: Projektordner nach
 `/addons/ha_webhost` auf dem HA-Host kopieren (z.B. via Samba-/SSH-Add-on) –
 lokale Add-ons werden vom Supervisor automatisch erkannt.
+
+## Öffentliche Erreichbarkeit über Tailscale Funnel
+
+Sites lassen sich über Port 8090 öffentlich freigeben, **ohne** das
+Admin-Panel mit zu exponieren (siehe oben, strikt getrennter Caddy-Listener,
+nur `/sites/<name>/*`, sonst `404`).
+
+**Wichtig, falls bereits andere Dienste über Tailscale freigegeben sind**
+(z.B. über die neuere "Services"/`svc:name`-Funktion): Das hier beschriebene
+Vorgehen nutzt bewusst den **klassischen, seit Jahren stabilen**
+Funnel-Mechanismus direkt auf dem Geräte-Hostnamen (`tailscale serve` +
+`tailscale funnel <port> on`), nicht die neuere Beta-"Services"-Funktion –
+beide Mechanismen laufen unabhängig nebeneinander und beeinflussen sich
+nicht, solange unterschiedliche Ports verwendet werden.
+
+**Voraussetzung:** Die ACL-Policy des Tailnets muss Funnel bereits erlauben
+(`"nodeAttrs": [{"target": ["autogroup:member"], "attr": ["funnel"]}]` oder
+äquivalent für das jeweilige Gerät) – ohne das schlägt `tailscale funnel`
+mit einer Fehlermeldung fehl. In den meisten bestehenden Setups, die schon
+einen anderen Dienst per Funnel freigeben, ist das bereits der Fall.
+
+**Einrichtung** (auf dem HA-Host, z.B. über das "Advanced SSH & Web
+Terminal"-Add-on):
+
+```bash
+# 1. Lokalen Port 8090 als HTTPS-Ziel auf Port 8443 konfigurieren
+#    (443 bewusst vermieden, falls dort schon ein anderer Dienst liegt)
+tailscale serve --bg --https=8443 http://127.0.0.1:8090
+
+# 2. Oeffentlich schalten
+tailscale funnel 8443 on
+
+# Status pruefen
+tailscale funnel status
+```
+
+Danach sind alle aktiven Sites erreichbar unter:
+
+```
+https://<euer-tailscale-hostname>:8443/sites/<name>/
+```
+
+(z.B. `https://homeassistant.tailf85481.ts.net:8443/sites/gresu-feuerwehrmann/`)
+
+**Wieder deaktivieren:**
+
+```bash
+tailscale funnel 8443 off
+```
+
+**Sicherheitshinweis:** Sobald Funnel aktiv ist, ist Port 8090 (und damit
+alle aktiven Sites) für **jeden im Internet** erreichbar, ohne HA-Login.
+Nur Sites deployen, die tatsächlich öffentlich sein sollen. Das Admin-Panel
+selbst bleibt davon unberührt (weiterhin nur über HA-Ingress erreichbar).
 
 ## ⚠️ "Update zeigt neue Version, UI bleibt trotzdem alt" – eigentliche Ursache
 

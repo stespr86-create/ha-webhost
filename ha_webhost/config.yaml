@@ -1,5 +1,5 @@
 name: "HA WebHost"
-version: "0.1.6"
+version: "0.1.7"
 slug: "ha_webhost"
 description: "Statisches Website-Hosting direkt in Home Assistant (MVP)"
 url: "https://github.com/stespr86-create/ha-webhost"
@@ -14,12 +14,18 @@ panel_icon: mdi:web
 panel_title: WebHost
 startup: services
 boot: auto
-# Optionaler direkter Zugriff auf gehostete Sites ohne HA-Login.
-# Standardmäßig nicht veröffentlicht (null) - kann im Add-on Netzwerk-Tab
-# aktiviert werden, wenn Besucher ohne HA-Anmeldung zugreifen sollen.
+# 8000: optionaler direkter Zugriff auf ALLES (Admin-UI + API + Sites)
+# ohne HA-Login. Standardmäßig deaktiviert (null) - bewusst NICHT für
+# öffentliche/Internet-Freigabe geeignet (würde das Admin-Panel mit
+# exponieren). Nur für vertrauenswürdiges LAN gedacht.
+#
+# 8090: NUR /sites/<name>/* - niemals Admin-UI/API. Fest aktiviert,
+# gedacht für öffentliche Erreichbarkeit (z.B. via Tailscale Funnel).
 ports:
   8000/tcp: null
+  8090/tcp: 8090
 ports_description:
-  8000/tcp: "Optional: direkter Zugriff auf gehostete Sites ohne HA-Anmeldung"
+  8000/tcp: "Optional: direkter Zugriff auf ALLES (auch Admin!) ohne HA-Anmeldung - nur LAN"
+  8090/tcp: "Nur gehostete Sites (kein Admin-Zugriff) - für öffentliche Freigabe gedacht"
 options: {}
 schema: {}
