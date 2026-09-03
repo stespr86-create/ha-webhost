@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.9
+
+- Neu: "🔄 Cache leeren & neu laden"-Button im Panel-Header. Löscht
+  gezielt nur die WebHost-eigenen Einträge aus dem Service-Worker-Cache
+  der Home-Assistant-PWA (nicht den gesamten HA-Cache) und lädt neu -
+  behebt das bekannte "Update zeigt neue Version, UI bleibt alt"-Problem
+  per Klick, ohne die Browser-Entwicklertools zu öffnen.
+
 ## 0.1.8
 
 - Neu: Einstellung "Öffentliche Basis-URL" im Panel (z.B. für Tailscale

@@ -27,6 +27,20 @@ header {
 	border-bottom: 1px solid var(--border);
 }
 
+.header-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	flex-wrap: wrap;
+}
+
+.header-row .button-link {
+	border: none;
+	cursor: pointer;
+	font-family: inherit;
+}
+
 header h1 {
 	margin: 0;
 	font-size: 1.5rem;

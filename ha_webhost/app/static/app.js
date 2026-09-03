@@ -161,6 +161,44 @@ backupAllLink.addEventListener("click", (event) => {
 	}
 });
 
+// Home Assistant registriert einen Service Worker fuer die eigene PWA, der
+// (da wir same-origin im Ingress-Iframe laufen) auch unsere eigenen
+// static/-Dateien zwischenspeichert - selbst nach einem Add-on-Update
+// bekommt der Browser dann u.U. weiterhin die alte Version ausgeliefert.
+// Dieser Knopf loescht gezielt nur die WebHost-eigenen Cache-Eintraege
+// (nicht den gesamten HA-Cache) und laedt danach neu.
+const clearCacheButton = document.getElementById("clear-cache-button");
+
+clearCacheButton.addEventListener("click", async () => {
+	if (!("caches" in window)) {
+		showStatus("Cache-API in diesem Browser nicht verfügbar.", true);
+		return;
+	}
+
+	clearCacheButton.disabled = true;
+	let deleted = 0;
+	try {
+		const cacheNames = await caches.keys();
+		for (const name of cacheNames) {
+			const cache = await caches.open(name);
+			const requests = await cache.keys();
+			for (const req of requests) {
+				if (req.url.includes("/static/")) {
+					await cache.delete(req);
+					deleted++;
+				}
+			}
+		}
+	} catch (err) {
+		showStatus(`Fehler beim Cache-Leeren: ${err.message}`, true);
+		clearCacheButton.disabled = false;
+		return;
+	}
+
+	showStatus(`Cache geleert (${deleted} Einträge) – lade neu...`);
+	setTimeout(() => window.location.reload(), 600);
+});
+
 async function loadSettings() {
 	const res = await fetch("api/settings");
 	const data = await res.json();

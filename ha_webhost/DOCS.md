@@ -196,10 +196,22 @@ durch Deinstallieren/Neuinstallieren) "löst" das Problem nur scheinbar,
 weil dadurch zufällig eine neue, noch nicht gecachte URL entsteht - der
 Supervisor-Build war die ganze Zeit korrekt.
 
-**Echte Lösung (kein Deinstallieren nötig, kein Datenverlust):** Nach
-einem Update den Service-Worker-Cache für die Add-on-Assets leeren. Im
-Browser auf einer beliebigen HA-Seite in der Konsole ausführen (oder per
-`javascript_exec` einer Browser-Automatisierung):
+**Echte Lösung (kein Deinstallieren nötig, kein Datenverlust):** Seit
+Version 0.1.9 gibt es dafür den Knopf **"🔄 Cache leeren & neu laden"**
+oben im Panel – einfach anklicken, fertig. Löscht gezielt nur die
+WebHost-eigenen Cache-Einträge (nicht den gesamten HA-Cache).
+
+Falls der Knopf selbst noch die alte Version zeigt (z.B. direkt nach dem
+allerersten Update auf 0.1.9): einmalig manuell nachhelfen, entweder per
+Hard-Reload (Cmd/Ctrl+Shift+R – hilft nicht immer, da das nur den
+normalen HTTP-Cache leert, nicht den Service-Worker-Cache) oder
+zuverlässiger über die Chrome-Entwicklertools: `F12` → Tab **"Application"**
+→ **"Service Workers"** → bei der HA-Domain auf **"Unregister"** klicken
+→ Seite neu laden. Danach funktioniert auch der Knopf selbst wieder für
+alle zukünftigen Updates.
+
+Alternativ (z.B. für eigene Scripts) direkt per Konsole/`javascript_exec`
+einer Browser-Automatisierung:
 
 ```js
 const cache = await caches.open("workbox-runtime-https://<eure-ha-domain>/");
@@ -208,10 +220,6 @@ for (const req of requests) {
   if (req.url.includes("static/")) await cache.delete(req);
 }
 ```
-
-Alternativ reicht oft auch ein normaler Hard-Reload (Cmd/Ctrl+Shift+R) im
-Browser oder ein Schließen/Neuöffnen des Panels nach ein paar Minuten,
-da Workbox Runtime-Caches i.d.R. irgendwann von selbst revalidieren.
 
 **Falls trotzdem nichts hilft** (echter Build-Fehler, nicht nur Anzeige):
 Supervisor bietet einen Repository-Repair-Endpunkt
