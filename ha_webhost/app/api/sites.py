@@ -54,7 +54,7 @@ def get_site(name: str, session: Session = Depends(get_session)):
     return site
 
 
-@router.post("/upload", status_code=201, response_model=SitePublic)
+@router.post("/upload", response_model=SitePublic)
 async def deploy_upload(
     name: str = Form(...),
     file: UploadFile = File(...),

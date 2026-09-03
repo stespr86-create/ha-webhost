@@ -12,7 +12,8 @@ im HA-Ingress-Panel.
 - ZIP-Upload mit automatischem, sicherem Entpacken (Zip-Slip-Schutz)
 - Deployment aus öffentlichen und privaten Git-Repositories (GitHub/GitLab/
   Gitea, per HTTPS-URL + optionalem Access Token)
-- Redeploy per Knopfdruck (git pull)
+- Redeploy per Knopfdruck (git pull bei Git-Sites, erneuter ZIP-Upload
+  unter demselben Namen bei Upload-Sites – "🔄 Update"-Button)
 - Einfacher Datei-Browser/-Editor über die API (`/api/files/...`)
 - Manuelles Backup aller Sites als ein ZIP-Download ("📦 Alle Sites
   sichern"-Button im Panel, `.git`-Verzeichnisse werden ausgeschlossen)

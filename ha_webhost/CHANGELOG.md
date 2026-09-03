@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.6
+
+- Neu: "🔄 Update"-Button für Upload-Sites — erneutes Hochladen einer ZIP
+  unter demselben Namen ersetzt jetzt den Inhalt (statt mit `409` zu
+  scheitern), analog zu "Redeploy" bei Git-Sites. `id`/`created_at`
+  bleiben erhalten, `updated_at`/`last_deploy_at` werden aktualisiert.
+  Ein Upload gegen eine bestehende Site anderen Typs (z.B. Git) bleibt
+  weiterhin ein klarer `409`-Konflikt.
+
 ## 0.1.5
 
 - Sicherheitsverbesserung: Git-Access-Token wird jetzt verschlüsselt in

@@ -25,11 +25,19 @@ def sync_proxy(session: Session) -> None:
 
 
 def create_site_from_upload(session: Session, name: str, upload_bytes: bytes) -> Site:
+    """Legt eine neue Upload-Site an oder ersetzt den Inhalt einer
+    bestehenden (erneutes Hochladen unter demselben Namen = Redeploy)."""
     name = validate_site_name(name)
-    if get_site(session, name):
-        raise ValueError(f"Site '{name}' existiert bereits.")
+    site = get_site(session, name)
+    if site and site.source_type != SourceType.upload:
+        raise ValueError(
+            f"Site '{name}' existiert bereits mit Quelle '{site.source_type.value}'."
+        )
 
-    site = Site(name=name, source_type=SourceType.upload, status=SiteStatus.deploying)
+    if not site:
+        site = Site(name=name, source_type=SourceType.upload, status=SiteStatus.deploying)
+    else:
+        site.status = SiteStatus.deploying
     session.add(site)
     session.commit()
     session.refresh(site)

@@ -41,6 +41,7 @@ async function loadSites() {
 					<td>
 						<button data-action="files" data-name="${site.name}">📂 Dateien</button>
 						${site.source_type === "git" ? `<button data-action="redeploy" data-name="${site.name}">Redeploy</button>` : ""}
+						${site.source_type === "upload" ? `<button data-action="redeploy-upload" data-name="${site.name}">🔄 Update</button>` : ""}
 						<button data-action="delete" data-name="${site.name}" class="danger">Löschen</button>
 					</td>
 				</tr>
@@ -83,6 +84,35 @@ sitesBody.addEventListener("click", async (event) => {
 	if (action === "files") {
 		openFileManager(name);
 	}
+
+	if (action === "redeploy-upload") {
+		redeployUploadTarget = name;
+		redeployUploadInput.click();
+	}
+});
+
+const redeployUploadInput = document.getElementById("redeploy-upload-input");
+let redeployUploadTarget = null;
+
+redeployUploadInput.addEventListener("change", async () => {
+	const file = redeployUploadInput.files[0];
+	const target = redeployUploadTarget;
+	redeployUploadInput.value = "";
+	redeployUploadTarget = null;
+	if (!file || !target) return;
+
+	const formData = new FormData();
+	formData.append("name", target);
+	formData.append("file", file);
+
+	const res = await fetch("api/sites/upload", { method: "POST", body: formData });
+	if (res.ok) {
+		showStatus(`Site "${target}" aktualisiert.`);
+	} else {
+		const err = await res.json();
+		showStatus(`Fehler: ${err.detail}`, true);
+	}
+	loadSites();
 });
 
 document.getElementById("upload-form").addEventListener("submit", async (event) => {

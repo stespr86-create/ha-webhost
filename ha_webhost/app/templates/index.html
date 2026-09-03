@@ -48,7 +48,8 @@
 			<p class="hint">
 				Statische Builds (React/Vue/Angular) müssen mit relativem Base-Path gebaut werden
 				(z.B. Vite: <code>base: './'</code>), damit sie unter <code>/sites/&lt;name&gt;/</code>
-				korrekt funktionieren.
+				korrekt funktionieren. Ein erneuter Upload unter demselben Namen ersetzt den
+				Inhalt (Update) – dafür gibt es auch den "🔄 Update"-Knopf in der Sites-Tabelle.
 			</p>
 		</section>
 
@@ -72,6 +73,8 @@
 		</section>
 
 		<div id="status-message" class="status" role="status"></div>
+
+		<input type="file" id="redeploy-upload-input" accept=".zip" hidden />
 	</main>
 
 	<div id="file-manager-overlay" class="fm-overlay" hidden>
