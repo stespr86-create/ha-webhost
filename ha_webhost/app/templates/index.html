@@ -65,7 +65,7 @@
 			<h2>Neue Site: ZIP-Upload</h2>
 			<form id="upload-form">
 				<label>Name (a-z, 0-9, -)
-					<input type="text" name="name" required pattern="[a-z0-9][a-z0-9-]{1,30}[a-z0-9]" />
+					<input type="text" name="name" required pattern="[a-z0-9][a-z0-9\-]{1,30}[a-z0-9]" />
 				</label>
 				<label>ZIP-Datei
 					<input type="file" name="file" accept=".zip" required />
@@ -84,7 +84,7 @@
 			<h2>Neue Site: Fotogalerie</h2>
 			<form id="gallery-form">
 				<label>Name (a-z, 0-9, -)
-					<input type="text" name="name" required pattern="[a-z0-9][a-z0-9-]{1,30}[a-z0-9]" />
+					<input type="text" name="name" required pattern="[a-z0-9][a-z0-9\-]{1,30}[a-z0-9]" />
 				</label>
 				<label>Externer Link (optional, z.B. Google Fotos)
 					<input type="url" name="link_url" placeholder="https://photos.google.com/share/..." />
@@ -107,7 +107,7 @@
 			<h2>Neue Site: Git-Deployment</h2>
 			<form id="git-form">
 				<label>Name (a-z, 0-9, -)
-					<input type="text" name="name" required pattern="[a-z0-9][a-z0-9-]{1,30}[a-z0-9]" />
+					<input type="text" name="name" required pattern="[a-z0-9][a-z0-9\-]{1,30}[a-z0-9]" />
 				</label>
 				<label>Repository-URL
 					<input type="url" name="git_url" required placeholder="https://github.com/user/repo.git" />
@@ -126,7 +126,7 @@
 			<h2>Neue Site: WordPress</h2>
 			<form id="wordpress-form">
 				<label>Name (a-z, 0-9, -)
-					<input type="text" name="name" required pattern="[a-z0-9][a-z0-9-]{1,30}[a-z0-9]" />
+					<input type="text" name="name" required pattern="[a-z0-9][a-z0-9\-]{1,30}[a-z0-9]" />
 				</label>
 				<label>Blog-Name (optional)
 					<input type="text" name="blog_name" placeholder="My WordPress Site" />
