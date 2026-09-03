@@ -108,6 +108,21 @@ def deploy_gallery(
         raise HTTPException(409, str(exc)) from exc
 
 
+@router.post("/wordpress", status_code=201, response_model=SitePublic)
+def deploy_wordpress(
+    name: str = Form(...),
+    session: Session = Depends(get_session),
+):
+    try:
+        return site_service.create_wordpress_site(session, name)
+    except InvalidSiteName as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(422, f"WordPress-Installation fehlgeschlagen: {str(exc)}") from exc
+
+
 @router.post("/{name}/redeploy", response_model=SitePublic)
 def redeploy(name: str, session: Session = Depends(get_session)):
     try:

@@ -12,6 +12,9 @@ engine = create_engine(f"sqlite:///{DB_PATH}", connect_args={"check_same_thread"
 _NEW_SITE_COLUMNS = {
     "gallery_link_url": "VARCHAR",
     "gallery_link_label": "VARCHAR",
+    "wordpress_db_name": "VARCHAR",
+    "wordpress_db_user": "VARCHAR",
+    "wordpress_db_password": "VARCHAR",
 }
 
 

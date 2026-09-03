@@ -7,6 +7,8 @@ lesbar), analog zur SQLite-DB selbst.
 """
 
 import os
+import secrets
+import string
 from pathlib import Path
 
 from cryptography.fernet import Fernet, InvalidToken
@@ -45,3 +47,9 @@ def decrypt(value: str) -> str:
             "Gespeicherter Wert konnte nicht entschlüsselt werden "
             "(secret.key fehlt oder wurde ausgetauscht)."
         ) from exc
+
+
+def generate_random_password(length: int = 32) -> str:
+    """Generiert ein kryptografisch sicheres Zufallspasswort aus Buchstaben, Ziffern und Sonderzeichen."""
+    alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+    return "".join(secrets.choice(alphabet) for _ in range(length))

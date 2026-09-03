@@ -9,6 +9,7 @@ class SourceType(str, Enum):
     upload = "upload"
     git = "git"
     gallery = "gallery"
+    wordpress = "wordpress"
 
 
 class SiteStatus(str, Enum):
@@ -30,6 +31,9 @@ class Site(SQLModel, table=True):
     git_token: Optional[str] = None
     gallery_link_url: Optional[str] = None
     gallery_link_label: Optional[str] = None
+    wordpress_db_name: Optional[str] = None
+    wordpress_db_user: Optional[str] = None
+    wordpress_db_password: Optional[str] = None
     status: SiteStatus = SiteStatus.active
     created_at: datetime = Field(default_factory=_utcnow)
     updated_at: datetime = Field(default_factory=_utcnow)
@@ -38,12 +42,11 @@ class Site(SQLModel, table=True):
 
 
 class SitePublic(SQLModel):
-    """API-Response-Form von Site - lässt git_token bewusst weg.
+    """API-Response-Form von Site - lässt git_token und wordpress_db_password bewusst weg.
 
-    Der Access-Token darf niemals über die API zurückgegeben werden, auch
-    nicht an den authentifizierten Admin selbst: er wird einmalig beim
-    Anlegen der Site eingegeben und danach nur noch intern fuer
-    Git-Operationen verwendet.
+    Geheime Werte (Token, Passwörter) dürfen niemals über die API zurückgegeben werden, auch
+    nicht an den authentifizierten Admin selbst: sie werden einmalig beim
+    Anlegen eingegeben und danach nur noch intern verwendet.
     """
 
     id: Optional[int] = None
@@ -53,6 +56,8 @@ class SitePublic(SQLModel):
     git_branch: str = "main"
     gallery_link_url: Optional[str] = None
     gallery_link_label: Optional[str] = None
+    wordpress_db_name: Optional[str] = None
+    wordpress_db_user: Optional[str] = None
     status: SiteStatus = SiteStatus.active
     created_at: datetime
     updated_at: datetime

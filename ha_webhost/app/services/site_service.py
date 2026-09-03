@@ -8,7 +8,7 @@ from core import crypto
 from core.config import SITES_DIR
 from core.security import validate_site_name
 from models.site import Site, SiteStatus, SourceType
-from services import caddy_service, gallery_service, git_service, zip_service
+from services import caddy_service, gallery_service, git_service, wordpress_service, zip_service
 
 
 def list_sites(session: Session) -> list[Site]:
@@ -126,6 +126,49 @@ def create_gallery_site(
     session.add(site)
     session.commit()
     sync_proxy(session)
+
+    return site
+
+
+def create_wordpress_site(session: Session, name: str) -> Site:
+    """Legt eine WordPress-Site an: lädt WordPress herunter, erstellt Datenbank
+    + Benutzer, generiert wp-config.php."""
+    name = validate_site_name(name)
+    if get_site(session, name):
+        raise ValueError(f"Site '{name}' existiert bereits.")
+
+    # DB-Zugangsdaten generieren (Name basiert auf Site-Name)
+    db_name = f"wp_{name.replace('-', '_')}"
+    db_user = f"wp_{name.replace('-', '_')}"
+    db_password = crypto.generate_random_password(32)
+
+    site = Site(
+        name=name,
+        source_type=SourceType.wordpress,
+        status=SiteStatus.deploying,
+        wordpress_db_name=db_name,
+        wordpress_db_user=db_user,
+        wordpress_db_password=crypto.encrypt(db_password),
+    )
+    session.add(site)
+    session.commit()
+    session.refresh(site)
+
+    try:
+        site_dir = SITES_DIR / name
+        wordpress_service.init_wordpress_site(site_dir, name, db_name, db_user, db_password)
+        site.status = SiteStatus.active
+        site.last_error = None
+    except Exception as exc:
+        site.status = SiteStatus.failed
+        site.last_error = str(exc)
+        raise
+    finally:
+        site.updated_at = datetime.now(timezone.utc)
+        site.last_deploy_at = datetime.now(timezone.utc)
+        session.add(site)
+        session.commit()
+        sync_proxy(session)
 
     return site
 
