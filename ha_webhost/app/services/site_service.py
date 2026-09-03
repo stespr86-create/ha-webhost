@@ -130,6 +130,26 @@ def create_gallery_site(
     return site
 
 
+def refresh_gallery_frontend(session: Session, name: str) -> Site:
+    """Kopiert index.html/style.css/app.js einer Galerie-Site neu aus der
+    aktuellen Vorlage (gallery_template/) - z.B. nach einem Add-on-Update
+    mit verbessertem Galerie-Design. Fasst dabei uploads/ und manifest.json
+    NICHT an, bereits hochgeladene Fotos bleiben unveraendert erhalten."""
+    site = get_site(session, name)
+    if not site:
+        raise ValueError(f"Site '{name}' nicht gefunden.")
+    if site.source_type != SourceType.gallery:
+        raise ValueError("Nur bei Fotogalerie-Sites möglich.")
+
+    gallery_service.write_frontend(name)
+
+    site.updated_at = datetime.now(timezone.utc)
+    session.add(site)
+    session.commit()
+    session.refresh(site)
+    return site
+
+
 def redeploy(session: Session, name: str) -> Site:
     site = get_site(session, name)
     if not site:

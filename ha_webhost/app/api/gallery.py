@@ -1,5 +1,10 @@
+import tempfile
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from sqlmodel import Session
+from starlette.background import BackgroundTask
 
 from core.config import MAX_GALLERY_FILE_BYTES
 from core.db import get_session
@@ -32,6 +37,26 @@ def gallery_meta(name: str, session: Session = Depends(get_session)):
         "link_label": site.gallery_link_label,
         "photos": gallery_service.list_photos(name),
     }
+
+
+@router.get("/{name}/api/download")
+def gallery_download(name: str, session: Session = Depends(get_session)):
+    _get_active_gallery(session, name)
+
+    tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
+    tmp.close()
+    output_path = Path(tmp.name)
+    count = gallery_service.zip_photos(name, output_path)
+    if count == 0:
+        output_path.unlink(missing_ok=True)
+        raise HTTPException(404, "Noch keine Fotos vorhanden.")
+
+    return FileResponse(
+        output_path,
+        media_type="application/zip",
+        filename=f"{name}-fotos.zip",
+        background=BackgroundTask(output_path.unlink),
+    )
 
 
 @router.post("/{name}/api/upload")

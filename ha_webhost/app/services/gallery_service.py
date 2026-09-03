@@ -3,6 +3,7 @@ import json
 import shutil
 import threading
 import uuid
+import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -88,6 +89,19 @@ def list_photos(name: str) -> list[dict]:
         _write_manifest(manifest_path, kept)
     kept.sort(key=lambda e: e["uploaded_at"], reverse=True)
     return kept
+
+
+def zip_photos(name: str, output_path: Path) -> int:
+    """Packt alle aktuell gueltigen Fotos der Galerie in ein ZIP fuer den
+    "Alle herunterladen"-Knopf. Gibt die Anzahl enthaltener Fotos zurueck."""
+    _, uploads_dir, _ = _paths(name)
+    entries = list_photos(name)
+    with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for entry in entries:
+            file_path = uploads_dir / entry["filename"]
+            if file_path.exists():
+                zf.write(file_path, entry["filename"])
+    return len(entries)
 
 
 def add_photo(name: str, content: bytes, caption: str) -> dict:

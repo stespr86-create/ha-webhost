@@ -21,8 +21,12 @@
 	var lightboxMedia = document.getElementById("lightbox-media");
 	var lightboxCaption = document.getElementById("lightbox-caption");
 	var lightboxClose = document.getElementById("lightbox-close");
+	var lightboxPrev = document.getElementById("lightbox-prev");
+	var lightboxNext = document.getElementById("lightbox-next");
 
 	var ROTATIONS = [-4, 3, -2.5, 4, -3.5, 2, -1.5, 3.5];
+	var currentPhotos = [];
+	var currentIndex = -1;
 
 	function escapeHtml(value) {
 		return String(value).replace(/[&<>"']/g, function (ch) {
@@ -36,6 +40,7 @@
 	}
 
 	function renderPhotos(photos) {
+		currentPhotos = photos;
 		countLabel.textContent = String(photos.length);
 		emptyState.hidden = photos.length > 0;
 		galleryGrid.innerHTML = photos
@@ -44,7 +49,7 @@
 				var caption = p.caption || "Vom Fest";
 				var src = "uploads/" + encodeURIComponent(p.filename);
 				return (
-					'<figure class="photo-card" style="--rot:' + rot + 'deg" data-src="' + escapeHtml(src) + '" data-caption="' + escapeHtml(caption) + '">' +
+					'<figure class="photo-card" style="--rot:' + rot + 'deg" data-index="' + i + '">' +
 					'<div class="photo-frame"><img src="' + src + '" alt="' + escapeHtml(caption) + '" loading="lazy"></div>' +
 					'<figcaption><span class="cap-text">' + escapeHtml(caption) + "</span></figcaption>" +
 					"</figure>"
@@ -56,12 +61,23 @@
 	galleryGrid.addEventListener("click", function (e) {
 		var card = e.target.closest(".photo-card");
 		if (!card) return;
-		openLightbox(card.dataset.src, card.dataset.caption);
+		openLightbox(Number(card.dataset.index));
 	});
 
-	function openLightbox(src, caption) {
-		lightboxMedia.innerHTML = '<img src="' + src + '" alt="' + caption + '">';
-		lightboxCaption.textContent = caption || "";
+	function showLightboxPhoto(index) {
+		if (!currentPhotos.length) return;
+		currentIndex = (index + currentPhotos.length) % currentPhotos.length;
+		var photo = currentPhotos[currentIndex];
+		var src = "uploads/" + encodeURIComponent(photo.filename);
+		var caption = photo.caption || "Vom Fest";
+		lightboxMedia.innerHTML = '<img src="' + src + '" alt="' + escapeHtml(caption) + '">';
+		lightboxCaption.textContent = caption;
+		var hasMultiple = currentPhotos.length > 1;
+		lightboxPrev.hidden = !hasMultiple;
+		lightboxNext.hidden = !hasMultiple;
+	}
+	function openLightbox(index) {
+		showLightboxPhoto(index);
 		lightbox.hidden = false;
 		requestAnimationFrame(function () { lightbox.classList.add("open"); });
 	}
@@ -70,9 +86,14 @@
 		setTimeout(function () { lightbox.hidden = true; }, 180);
 	}
 	lightboxClose.addEventListener("click", closeLightbox);
+	lightboxPrev.addEventListener("click", function () { showLightboxPhoto(currentIndex - 1); });
+	lightboxNext.addEventListener("click", function () { showLightboxPhoto(currentIndex + 1); });
 	lightbox.addEventListener("click", function (e) { if (e.target === lightbox) closeLightbox(); });
 	document.addEventListener("keydown", function (e) {
-		if (e.key === "Escape" && !lightbox.hidden) closeLightbox();
+		if (lightbox.hidden) return;
+		if (e.key === "Escape") closeLightbox();
+		if (e.key === "ArrowLeft") showLightboxPhoto(currentIndex - 1);
+		if (e.key === "ArrowRight") showLightboxPhoto(currentIndex + 1);
 	});
 
 	async function loadMeta(applyHeader) {

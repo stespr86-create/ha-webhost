@@ -118,6 +118,14 @@ def redeploy(name: str, session: Session = Depends(get_session)):
         raise HTTPException(422, str(exc)) from exc
 
 
+@router.post("/{name}/gallery/refresh", response_model=SitePublic)
+def refresh_gallery(name: str, session: Session = Depends(get_session)):
+    try:
+        return site_service.refresh_gallery_frontend(session, name)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
 @router.delete("/{name}", status_code=204)
 def delete(name: str, session: Session = Depends(get_session)):
     try:

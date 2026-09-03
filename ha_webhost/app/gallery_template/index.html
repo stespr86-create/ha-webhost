@@ -62,7 +62,10 @@
 	<div class="wrap section" id="gallery-section">
 		<div class="section-head">
 			<h2>Die Fotowand</h2>
-			<span class="count"><span id="photo-count">0</span> Fotos</span>
+			<div class="section-head-right">
+				<span class="count"><span id="photo-count">0</span> Fotos</span>
+				<a href="api/download" class="btn-download" id="download-all">⬇ Alle herunterladen</a>
+			</div>
 		</div>
 		<div class="gallery-grid" id="gallery-grid"></div>
 		<p class="empty-state" id="empty-state" hidden>Noch keine Fotos – lade das erste hoch!</p>
@@ -73,11 +76,13 @@
 	</footer>
 
 	<div class="lightbox" id="lightbox" hidden>
+		<button type="button" class="lightbox-nav lightbox-prev" id="lightbox-prev" aria-label="Vorheriges Foto">‹</button>
 		<div class="lightbox-box">
 			<div class="lightbox-media" id="lightbox-media"></div>
 			<p id="lightbox-caption"></p>
 			<button type="button" class="lightbox-close" id="lightbox-close">Schließen ✕</button>
 		</div>
+		<button type="button" class="lightbox-nav lightbox-next" id="lightbox-next" aria-label="Nächstes Foto">›</button>
 	</div>
 
 	<script src="app.js"></script>

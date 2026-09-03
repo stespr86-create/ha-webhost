@@ -187,6 +187,13 @@ h1, h2 {
 
 .section-head h2 { font-size: 1.6rem; font-weight: 700; }
 
+.section-head-right {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	flex-wrap: wrap;
+}
+
 .section-head .count {
 	font-family: "Nunito", sans-serif;
 	font-weight: 700;
@@ -194,6 +201,20 @@ h1, h2 {
 	color: var(--ink-soft);
 	font-variant-numeric: tabular-nums;
 }
+
+.btn-download {
+	font-family: "Nunito", sans-serif;
+	font-weight: 700;
+	font-size: 0.82rem;
+	color: var(--ink);
+	background: var(--surface);
+	border: 1px solid var(--border);
+	padding: 0.45rem 0.9rem;
+	border-radius: 999px;
+	text-decoration: none;
+	transition: border-color 0.18s ease, background 0.18s ease;
+}
+.btn-download:hover { border-color: var(--accent-2); background: var(--bg-alt); }
 
 .upload-card {
 	background: var(--surface);
@@ -377,9 +398,9 @@ footer {
 
 .lightbox-box {
 	background: var(--surface-2);
-	padding: 1rem 1rem 0.85rem;
+	padding: 1.1rem 1.1rem 0.9rem;
 	border-radius: 6px;
-	max-width: min(88vw, 520px);
+	max-width: min(94vw, 1000px);
 	box-shadow: var(--shadow-lg);
 	transform: scale(0.94);
 	transition: transform 0.2s ease;
@@ -388,12 +409,43 @@ footer {
 
 .lightbox-media {
 	width: 100%;
-	max-height: 62vh;
+	max-height: 80vh;
 	border-radius: 3px;
 	overflow: hidden;
 	background: var(--bg-alt);
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
-.lightbox-media img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.lightbox-media img { max-width: 100%; max-height: 80vh; width: auto; height: auto; object-fit: contain; display: block; }
+
+.lightbox-nav {
+	position: fixed;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 52px;
+	height: 52px;
+	border-radius: 50%;
+	border: none;
+	background: rgba(20, 14, 30, 0.55);
+	color: #fff;
+	font-size: 1.8rem;
+	line-height: 1;
+	cursor: pointer;
+	z-index: 51;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: background 0.18s ease, transform 0.18s ease;
+}
+.lightbox-nav:hover { background: var(--accent); color: var(--on-accent); }
+.lightbox-prev { left: 1rem; }
+.lightbox-next { right: 1rem; }
+@media (max-width: 640px) {
+	.lightbox-nav { width: 44px; height: 44px; font-size: 1.5rem; }
+	.lightbox-prev { left: 0.4rem; }
+	.lightbox-next { right: 0.4rem; }
+}
 
 #lightbox-caption {
 	font-family: "Caveat", cursive;

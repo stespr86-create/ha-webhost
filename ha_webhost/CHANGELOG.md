@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.12
+
+- Fotogalerie: Lightbox zeigt Fotos jetzt deutlich größer (bis 80% der
+  Bildschirmhöhe statt vorher ca. 520px) und lässt sich mit den
+  Pfeiltasten (← →) sowie per Klick auf die neuen ‹/›-Knöpfe der Reihe
+  nach durchklicken (springt am Ende wieder zum Anfang).
+- Neu: "⬇ Alle herunterladen"-Button auf der Galerie-Seite - lädt alle
+  Fotos der Galerie gebündelt als ZIP herunter.
+- Neu: "🔄 Seite aktualisieren"-Knopf bei Fotogalerie-Sites im Panel -
+  zieht die neueste Galerie-Oberfläche (z.B. nach diesem Update) auf eine
+  bereits angelegte Galerie, ohne hochgeladene Fotos anzutasten.
+
 ## 0.1.11
 
 - Neu: Site-Typ "Fotogalerie" - eine gemeinsame Foto-Wand, auf die jeder mit

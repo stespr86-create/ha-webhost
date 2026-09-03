@@ -53,6 +53,7 @@ async function loadSites() {
 						<button data-action="files" data-name="${site.name}">📂 Dateien</button>
 						${site.source_type === "git" ? `<button data-action="redeploy" data-name="${site.name}">Redeploy</button>` : ""}
 						${site.source_type === "upload" ? `<button data-action="redeploy-upload" data-name="${site.name}">🔄 Update</button>` : ""}
+						${site.source_type === "gallery" ? `<button data-action="refresh-gallery" data-name="${site.name}" title="Holt die neueste Galerie-Oberfläche - Fotos bleiben erhalten">🔄 Seite aktualisieren</button>` : ""}
 						<button data-action="delete" data-name="${site.name}" class="danger">Löschen</button>
 					</td>
 				</tr>
@@ -94,6 +95,18 @@ sitesBody.addEventListener("click", async (event) => {
 
 	if (action === "files") {
 		openFileManager(name);
+	}
+
+	if (action === "refresh-gallery") {
+		button.disabled = true;
+		const res = await fetch(`api/sites/${name}/gallery/refresh`, { method: "POST" });
+		button.disabled = false;
+		if (res.ok) {
+			showStatus(`Galerie-Seite "${name}" aktualisiert (Fotos bleiben erhalten).`);
+		} else {
+			const err = await res.json();
+			showStatus(`Fehler: ${err.detail}`, true);
+		}
 	}
 
 	if (action === "redeploy-upload") {
