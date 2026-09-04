@@ -1,5 +1,7 @@
+import os
 import shutil
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
 from sqlmodel import Session, select
@@ -33,12 +35,38 @@ def get_site(session: Session, name: str) -> Optional[Site]:
 PHP_SOURCE_TYPES = (SourceType.wordpress, SourceType.php)
 
 
+def _make_writable_for_php(site_dir: Path) -> None:
+    """PHP-FPM-Worker laufen als 'nobody' (siehe php_fpm_service.POOL_TEMPLATE),
+    muessen aber teils selbst in ihr Site-Verzeichnis schreiben koennen - z.B.
+    WordPress-Medien-Uploads ueber die eigene wp-admin-Oberflaeche, oder eigene
+    kleine PHP-Tools, die Daten in einer Datei persistieren (siehe die
+    "anleitung"-Demo-Site). Site-Verzeichnisse werden aber vom Backend (root)
+    per ZIP-Extraktion/wp-cli angelegt und sind standardmaessig nicht fuer
+    'nobody' beschreibbar. Analog zu LOGS_DIR/PHP-FPM-Socket bewusst
+    pragmatisch offene Berechtigungen (kein Multi-Tenant-Hosting, ein
+    vertrauenswuerdiger Nutzer/LAN). Laeuft bei jedem sync_proxy() (inkl.
+    Add-on-Start) erneut, heilt also auch bereits bestehende Sites."""
+    for root, _dirs, files in os.walk(site_dir):
+        try:
+            os.chmod(root, 0o777)
+        except OSError:
+            continue
+        for filename in files:
+            try:
+                os.chmod(os.path.join(root, filename), 0o666)
+            except OSError:
+                continue
+
+
 def sync_proxy(session: Session) -> None:
     active_sites = [s for s in list_sites(session) if s.status == SiteStatus.active]
     names = [s.name for s in active_sites]
     php_names = [s.name for s in active_sites if s.source_type in PHP_SOURCE_TYPES]
     python_sites = [s for s in active_sites if s.source_type == SourceType.python]
     python_ports = {s.name: python_app_service.app_port(s.id) for s in python_sites}
+
+    for name in php_names:
+        _make_writable_for_php(SITES_DIR / name)
 
     php_fpm_service.sync_pools(php_names)
     caddy_service.write_and_reload(names, php_names, python_ports)

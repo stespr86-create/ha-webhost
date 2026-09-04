@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.30
+
+- **Fix: PHP-Sites (WordPress/PHP-Upload) konnten nicht in ihr eigenes
+  Verzeichnis schreiben.** PHP-FPM-Worker laufen als `nobody`, Site-
+  Verzeichnisse werden aber vom Backend (root) per ZIP-Extraktion/wp-cli
+  angelegt - ohne Schreibrecht scheiterten damit z.B. WordPress-Medien-
+  Uploads über die eigene wp-admin-Oberfläche oder eigene PHP-Tools, die
+  Dateien persistieren wollen (still, ohne Fehlermeldung). Betraf
+  vermutlich auch die bestehende WordPress-Site.
+- Fix: `sync_proxy()` setzt jetzt bei jedem Lauf (inkl. Add-on-Start) die
+  Berechtigungen aller PHP-fähigen Site-Verzeichnisse zurück auf
+  durchgängig beschreibbar - analog zum bereits bestehenden
+  `listen.mode = 0666` für den PHP-FPM-Socket. Heilt automatisch auch
+  bereits bestehende Sites, keine manuelle Aktion nötig.
+
 ## 0.1.29
 
 - **Fix: PHP-Fehler landeten trotz 0.1.28 nicht im neuen Live-Log.** Live
