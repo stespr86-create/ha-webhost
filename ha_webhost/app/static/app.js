@@ -46,6 +46,15 @@ async function loadSites() {
 			const externalLinkHtml = externalUrl
 				? `<a class="url-link" href="${escapeHtml(externalUrl)}" target="_blank" rel="noopener" title="${escapeHtml(externalUrl)}">🌐 ${escapeHtml(externalUrl)}</a>`
 				: "";
+			// Admin-Bereich gibt es nur bei Site-Typen mit eigenem Login
+			// (aktuell: WordPress/wp-admin) - bei allen anderen Typen läuft
+			// die Verwaltung ausschließlich über dieses Panel selbst.
+			const adminUrl = site.source_type === "wordpress" ? `sites/${site.name}/wp-admin/` : null;
+			const externalAdminUrl = adminUrl && publicBaseUrl ? `${publicBaseUrl}/sites/${site.name}/wp-admin/` : null;
+			const adminLinkHtml = adminUrl
+				? `<a class="url-link" href="${adminUrl}" target="_blank" rel="noopener" title="${escapeHtml(adminUrl)}">🔑 ${adminUrl}</a>`
+					+ (externalAdminUrl ? `<a class="url-link" href="${escapeHtml(externalAdminUrl)}" target="_blank" rel="noopener" title="${escapeHtml(externalAdminUrl)}">🔑🌐 ${escapeHtml(externalAdminUrl)}</a>` : "")
+				: "";
 			const wpInfo = site.source_type === "wordpress" && site.wordpress_admin_user
 				? `<div style="font-size: 0.85em; color: #666; margin-top: 2px;">Admin: ${site.wordpress_admin_user}</div>`
 				: "";
@@ -57,6 +66,7 @@ async function loadSites() {
 					<td>
 						<a class="url-link" href="${url}" target="_blank" rel="noopener" title="${escapeHtml(url)}">🏠 ${url}</a>
 						${externalLinkHtml}
+						${adminLinkHtml}
 					</td>
 					<td>
 						<button data-action="files" data-name="${site.name}">📂 Dateien</button>

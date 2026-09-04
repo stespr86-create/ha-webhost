@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.31
+
+- **Neu: Admin-Link in der Sites-Tabelle.** Bei Site-Typen mit eigenem
+  Login (aktuell: WordPress) zeigt das Panel jetzt zusätzlich zum
+  internen/öffentlichen Frontend-Link auch einen direkten Link auf
+  `wp-admin/` an (intern über HA-Ingress, zusätzlich extern falls eine
+  öffentliche Basis-URL hinterlegt ist). Bei Site-Typen ohne eigenen
+  Admin-Bereich (Galerie, Uploads, Python-Apps, ...) erscheint kein
+  Admin-Link, da die Verwaltung dort ohnehin nur über dieses Panel läuft.
+
 ## 0.1.30
 
 - **Fix: PHP-Sites (WordPress/PHP-Upload) konnten nicht in ihr eigenes
