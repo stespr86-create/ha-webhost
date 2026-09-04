@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.14
+
+- Fix: Regex-Pattern der Name-Eingabefelder (`[a-z0-9-]`) war ungültiges
+  HTML5-Pattern und hat die Formular-Validierung im gesamten Panel
+  blockiert - Buttons wie "Klonen & deployen" oder "Hochladen & deployen"
+  ließen sich dadurch nicht mehr anklicken. Bindestrich in der
+  Zeichenklasse jetzt escaped (`[a-z0-9\-]`).
+
 ## 0.1.13
 
 - Fotogalerie: Download-Knopf unter jedem Foto in der Fotowand (Raster)
