@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.1.24
+
+- **Fix: WordPress erzeugte über Tailscale Funnel `http://`-Links statt
+  `https://`** - u.a. der Seitentitel/Home-Link war dadurch defekt
+  (Funnel bedient ausschließlich HTTPS, ein `http://`-Aufruf schlägt
+  komplett fehl). Ursache: Caddy terminiert selbst kein TLS (das passiert
+  vorgelagert bei Tailscale Funnel bzw. HA-Ingress), `$_SERVER['HTTPS']`
+  ist deshalb serverseitig nie gesetzt - und Tailscale Funnel schickt
+  zwar `X-Forwarded-Host`, aber kein `X-Forwarded-Proto` (per
+  Caddy-Access-Log verifiziert), das übliche Signal für "Original-Request
+  war HTTPS" fehlte also komplett. Fix: zusätzlich `X-Forwarded-Proto`
+  UND den Tailscale-eigenen `Tailscale-Funnel-Request`-Header als Signal
+  auswerten (Funnel ist strukturell nur-HTTPS, das Vorhandensein dieses
+  Headers ist daher ein zuverlässiger Beweis für HTTPS).
+- Betrifft nur neu angelegte WordPress-Sites (wp-config.php wird einmalig
+  beim Anlegen generiert) - bereits bestehende Sites brauchen die
+  Korrektur einmalig manuell im Datei-Manager oder per Neuanlage.
+
 ## 0.1.23
 
 - **Fix: `/sites/<name>` ohne abschließenden Slash war kaputt (404 bzw.

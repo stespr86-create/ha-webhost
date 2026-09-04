@@ -124,7 +124,24 @@ define( 'NONCE_KEY',        '{nonce_key}' );
 if ( defined( 'WP_HOME' ) ) {{
     // Überschreiben ist erlaubt (z.B. in wp-cli Skripten)
 }} else {{
-    $protocol = ( ! empty( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] !== 'off' ) ? 'https://' : 'http://';
+    // Caddy selbst terminiert kein TLS (auto_https off - HTTPS wird
+    // vorgelagert beendet: Home-Assistant-Ingress bzw. Tailscale Funnel),
+    // $_SERVER['HTTPS'] ist deshalb hier NIE gesetzt. Tailscale Funnel
+    // sendet zwar X-Forwarded-Host, aber KEIN X-Forwarded-Proto (geprüft
+    // per Caddy-Access-Log) - ohne Zusatzcheck wurden dadurch alle Links
+    // (u.a. der Seitentitel/Home-Link) faelschlich mit http:// erzeugt,
+    // was ueber den nur-HTTPS Tailscale Funnel fehlschlaegt. Tailscale
+    // Funnel setzt aber zuverlaessig Tailscale-Funnel-Request und bedient
+    // ausschliesslich HTTPS - als zusaetzliches Signal nutzbar.
+    if ( ! empty( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] !== 'off' ) {{
+        $protocol = 'https://';
+    }} elseif ( ! empty( $_SERVER['HTTP_X_FORWARDED_PROTO'] ) && strtolower( $_SERVER['HTTP_X_FORWARDED_PROTO'] ) === 'https' ) {{
+        $protocol = 'https://';
+    }} elseif ( ! empty( $_SERVER['HTTP_TAILSCALE_FUNNEL_REQUEST'] ) ) {{
+        $protocol = 'https://';
+    }} else {{
+        $protocol = 'http://';
+    }}
     $site_url_computed = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
     if ( preg_match( '|^(.+?/sites/[^/]+)/|', $site_url_computed, $m ) ) {{
         define( 'WP_HOME',    $m[1] );
