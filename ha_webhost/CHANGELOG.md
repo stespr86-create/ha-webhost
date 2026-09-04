@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.1.26
+
+- **Fix: Caddy selbst hat `X-Forwarded-Proto: http` an PHP-/Python-Sites
+  weitergereicht, selbst wenn die Anfrage tatsächlich per HTTPS über
+  Tailscale Funnel ankam.** Live mit einer generischen PHP-Test-Site
+  bestätigt: Caddy terminiert selbst kein TLS (`auto_https off`) und setzt
+  bei `reverse_proxy`/`php_fastcgi` automatisch `X-Forwarded-Proto: http`
+  aus seiner eigenen (Klartext-)Sicht - unabhängig davon, ob der
+  ursprüngliche Request tatsächlich verschlüsselt war. Jede App, die
+  diesen Standard-Header korrekt auswertet, wurde dadurch in die Irre
+  geführt (nicht nur WordPress - betraf grundsätzlich jede PHP-Upload-
+  oder Python-Upload-App).
+- Fix zentral in Caddy statt in einzelnen Sites: ein `map`-Block erkennt
+  Tailscale-Funnel-Requests (eigener `Tailscale-Funnel-Request`-Header -
+  Funnel ist strukturell nur-HTTPS) und reicht dafür korrekt
+  `X-Forwarded-Proto: https` an alle PHP-/Python-Sites weiter. Nicht über
+  Funnel eingehende Anfragen (HA-Ingress, direkter LAN-Zugriff auf Port
+  8090) bleiben unverändert - kein pauschales "immer HTTPS", das für
+  echten Klartext-LAN-Zugriff falsch wäre.
+- Damit ist jetzt jede aktuelle und zukünftige PHP-/Python-Upload-App
+  automatisch korrekt informiert, ohne selbst etwas über Tailscale wissen
+  zu müssen - die 0.1.24/0.1.25-Fixes in wp-config.php bleiben als
+  zusätzliche Absicherung bestehen, sind aber nicht mehr die einzige
+  Verteidigungslinie.
+
 ## 0.1.25
 
 - **Fix: Redirect-Schleife auf `wp-login.php`/`wp-admin` hinter Tailscale

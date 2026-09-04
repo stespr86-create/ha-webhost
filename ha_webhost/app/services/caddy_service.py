@@ -91,7 +91,9 @@ SITE_BLOCK = """\
 SITE_BLOCK_PHP = """\
 \t\thandle_path /sites/{name}/* {{
 \t\t\troot * {root}
-\t\t\tphp_fastcgi unix/{socket}
+\t\t\tphp_fastcgi unix/{socket} {{
+\t\t\t\theader_up X-Forwarded-Proto {{forwarded_proto}}
+\t\t\t}}
 \t\t\tfile_server
 \t\t}}
 
@@ -103,7 +105,9 @@ SITE_BLOCK_PHP = """\
 # ausliefert, Caddy reicht den kompletten Request einfach durch.
 SITE_BLOCK_PYTHON = """\
 \t\thandle_path /sites/{name}/* {{
-\t\t\treverse_proxy 127.0.0.1:{port}
+\t\t\treverse_proxy 127.0.0.1:{port} {{
+\t\t\t\theader_up X-Forwarded-Proto {{forwarded_proto}}
+\t\t\t}}
 \t\t}}
 
 """
@@ -122,6 +126,32 @@ API_PROXY_BLOCK = """\
 \t\thandle /sites/*/api/* {{
 \t\t\treverse_proxy 127.0.0.1:{backend_port}
 \t\t}}
+
+"""
+
+# Caddy terminiert selbst kein TLS (auto_https off) und setzt bei
+# reverse_proxy/php_fastcgi AUTOMATISCH X-Forwarded-Proto: http fuer das
+# jeweilige Backend, weil Caddys eigener Listener aus seiner Sicht nur HTTP
+# spricht - das gilt selbst dann, wenn die Anfrage tatsaechlich per HTTPS
+# über Tailscale Funnel hereinkam (Funnel selbst sendet dafuer KEIN eigenes
+# X-Forwarded-Proto). Live mit einer generischen PHP-Test-Site bestaetigt:
+# ohne diesen Fix sieht JEDE PHP-/Python-App "X-Forwarded-Proto: http",
+# obwohl der Request nachweislich per HTTPS ankam - fuehrt bei jeder App,
+# die diesen Standard-Header korrekt auswertet (z.B. fuer is_ssl()-artige
+# Logik), zu falschen http://-Links bzw. Redirect-Schleifen (siehe
+# WordPress-Vorfall). Fix zentral hier statt in jeder einzelnen Site/App:
+# {{forwarded_proto}} wird einmal pro Request berechnet (Tailscale Funnel
+# erkennbar am eigenen Tailscale-Funnel-Request-Header - der ist strukturell
+# nur-HTTPS) und unten in jedem PHP-/Python-Site-Block als X-Forwarded-Proto
+# an das jeweilige Backend weitergereicht. Kommt die Anfrage NICHT ueber
+# Funnel (z.B. HA-Ingress oder direkter LAN-Zugriff auf Port 8090), bleibt
+# der von Caddy automatisch gesetzte Wert unveraendert (kein Downgrade auf
+# "immer https" - waere fuer echtes Klartext-LAN falsch).
+PROTO_MAP_BLOCK = """\
+\t\tmap {header.Tailscale-Funnel-Request} {forwarded_proto} {
+\t\t\t?1 https
+\t\t\tdefault {header.X-Forwarded-Proto}
+\t\t}
 
 """
 
@@ -161,12 +191,12 @@ def render_caddyfile(
     api_proxy_block = API_PROXY_BLOCK.format(backend_port=BACKEND_INTERNAL_PORT)
 
     ingress_block = (
-        INGRESS_HEADER + api_proxy_block + redirect_blocks + site_blocks
+        INGRESS_HEADER + api_proxy_block + PROTO_MAP_BLOCK + redirect_blocks + site_blocks
         + INGRESS_FOOTER.format(backend_port=BACKEND_INTERNAL_PORT)
     )
     public_block = (
         PUBLIC_HEADER.format(public_port=CADDY_PUBLIC_SITES_PORT)
-        + api_proxy_block + redirect_blocks + site_blocks + PUBLIC_FOOTER
+        + api_proxy_block + PROTO_MAP_BLOCK + redirect_blocks + site_blocks + PUBLIC_FOOTER
     )
 
     return GLOBAL_OPTS + ingress_block + "\n" + public_block
