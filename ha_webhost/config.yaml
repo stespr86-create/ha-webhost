@@ -1,5 +1,5 @@
 name: "HA WebHost"
-version: "0.1.22"
+version: "0.1.23"
 slug: "ha_webhost"
 description: "Statisches Website-Hosting direkt in Home Assistant (MVP)"
 url: "https://github.com/stespr86-create/ha-webhost"

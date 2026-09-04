@@ -125,6 +125,19 @@ API_PROXY_BLOCK = """\
 
 """
 
+# "/sites/<name>" OHNE abschliessenden Slash matched keinen der obigen
+# handle_path-Bloecke (das Muster "/sites/{name}/*" verlangt den Slash
+# zwingend) - fuehrt ohne diesen Redirect zu 404 (bzw. beim Erstaufruf zu
+# "200 leer" auf dem oeffentlichen Port). Praktisch relevant: WordPress'
+# eigener home_url()-Link (z.B. Seitentitel/Logo) zeigt konventionsgemaess
+# OHNE Trailing-Slash - ohne diesen Redirect fuehrte das dazu, dass genau
+# dieser Link auf jeder WordPress-Site kaputt war. Betrifft alle Site-Typen
+# gleichermassen, nicht nur WordPress.
+REDIRECT_BLOCK = """\
+\t\tredir /sites/{name} /sites/{name}/ 301
+
+"""
+
 
 def render_caddyfile(
     site_names: Iterable[str],
@@ -144,15 +157,16 @@ def render_caddyfile(
         return SITE_BLOCK.format(name=name, root=root)
 
     site_blocks = "".join(block_for(name) for name in names)
+    redirect_blocks = "".join(REDIRECT_BLOCK.format(name=name) for name in names)
     api_proxy_block = API_PROXY_BLOCK.format(backend_port=BACKEND_INTERNAL_PORT)
 
     ingress_block = (
-        INGRESS_HEADER + api_proxy_block + site_blocks
+        INGRESS_HEADER + api_proxy_block + redirect_blocks + site_blocks
         + INGRESS_FOOTER.format(backend_port=BACKEND_INTERNAL_PORT)
     )
     public_block = (
         PUBLIC_HEADER.format(public_port=CADDY_PUBLIC_SITES_PORT)
-        + api_proxy_block + site_blocks + PUBLIC_FOOTER
+        + api_proxy_block + redirect_blocks + site_blocks + PUBLIC_FOOTER
     )
 
     return GLOBAL_OPTS + ingress_block + "\n" + public_block

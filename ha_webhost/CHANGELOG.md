@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.23
+
+- **Fix: `/sites/<name>` ohne abschließenden Slash war kaputt (404 bzw.
+  leere Antwort) - betraf alle Site-Typen.** Caddys `handle_path
+  /sites/<name>/*`-Muster verlangt den Slash zwingend; ohne ihn matchte
+  keine Route. Praktisch relevant: WordPress' eigener Home-Link (Seitentitel/
+  Logo, `home_url()`) zeigt konventionsgemäß ohne Trailing-Slash - dieser
+  Link war dadurch auf jeder WordPress-Site kaputt (live entdeckt: Klick auf
+  den Seitentitel führte zu `ERR_EMPTY_RESPONSE`/404). Fix: `/sites/<name>`
+  leitet jetzt per 301 auf `/sites/<name>/` weiter.
+
 ## 0.1.22
 
 - Neu: Site-Typ **"Python-App"** - eigene/beliebige Python-Apps (Flask/
