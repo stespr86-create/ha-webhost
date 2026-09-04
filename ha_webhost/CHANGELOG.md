@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.29
+
+- **Fix: PHP-Fehler landeten trotz 0.1.28 nicht im neuen Live-Log.** Live
+  mit einer Test-Site bestätigt: `/data/logs/` wurde vom Backend (root)
+  angelegt, aber der PHP-FPM-Pool-Worker schreibt als `nobody` (siehe
+  `php_fpm_service.POOL_TEMPLATE`) - ohne Schreibrecht auf das Verzeichnis
+  konnte der Worker die `<name>-php.log` gar nicht erst anlegen, `error_log()`
+  scheiterte still. Fix: Verzeichnis nach dem Anlegen explizit auf `0o777`
+  gesetzt (analog zum bestehenden `listen.mode = 0666` für den PHP-FPM-
+  Socket - beides bewusst offene Berechtigungen für plattform-internen
+  Cross-UID-Zugriff, nicht öffentlich erreichbar).
+
 ## 0.1.28
 
 - **Neu: Live-Log-Viewer pro Site** - letzter offene Punkt aus Roadmap

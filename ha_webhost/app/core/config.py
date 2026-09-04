@@ -61,3 +61,9 @@ GALLERY_JPEG_QUALITY = 82
 
 SITES_DIR.mkdir(parents=True, exist_ok=True)
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
+# Vom Backend (root) angelegt, aber vom PHP-FPM-Pool-Worker beschrieben, der
+# als "nobody" laeuft (siehe php_fpm_service.POOL_TEMPLATE) - ohne diesen
+# chmod kann der Worker keine neue <name>-php.log darin anlegen und
+# error_log()/PHP-Fehler verschwinden dann stillschweigend. Analog zum
+# bestehenden "listen.mode = 0666" fuer den PHP-FPM-Socket.
+os.chmod(LOGS_DIR, 0o777)
