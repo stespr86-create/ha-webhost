@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.1.32
+
+- **Fix: Absolute Redirects von PHP-/WordPress-Sites landeten hinter
+  HA-Ingress am Token vorbei auf 404** - live entdeckt über den neuen
+  Admin-Link (0.1.31): der wp-login.php-Redirect bei fehlendem Login
+  zeigte auf `https://<host>/sites/<name>/wp-login.php` OHNE den
+  Ingress-Token, den der Browser für den Weg zurück zum Add-on braucht.
+  Ursache: Home Assistants Supervisor entfernt den Token bereits, bevor
+  die Anfrage den Container erreicht - WordPress kennt ihn deshalb
+  grundsätzlich nicht und kann ihn in eigene absolute Links (Redirects,
+  `home_url()`, ...) nicht einbauen.
+- Fix: HA sendet den Präfix separat im Header `X-Ingress-Path` mit -
+  `wp-config.php` baut `WP_HOME`/`WP_SITEURL` jetzt direkt aus
+  `HTTP_HOST` + diesem Präfix + dem (jetzt fest bekannten statt brüchig
+  aus `REQUEST_URI` per Regex geratenen) Site-Namen zusammen.
+- Der Header ist nur über den Ingress-Listener vertrauenswürdig - Caddy
+  entfernt ihn jetzt aktiv auf dem öffentlichen Port (Tailscale Funnel),
+  damit ihn kein externer Besucher gegenüber PHP-/Python-Sites fälschen
+  kann (`caddy_service.STRIP_INGRESS_PATH_DIRECTIVE`).
+- Betrifft nur neu erstellte WordPress-Sites automatisch - die
+  bestehende Site wurde einmalig manuell live nachgezogen.
+
 ## 0.1.31
 
 - **Neu: Admin-Link in der Sites-Tabelle.** Bei Site-Typen mit eigenem

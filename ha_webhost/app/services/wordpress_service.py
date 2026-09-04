@@ -144,21 +144,32 @@ define( 'SECURE_AUTH_KEY',  '{secure_auth_key}' );
 define( 'LOGGED_IN_KEY',    '{logged_in_key}' );
 define( 'NONCE_KEY',        '{nonce_key}' );
 
-// WordPress-Pfade (automatisch aus HTTP_HOST bestimmt)
+// WordPress-Pfade (automatisch aus HTTP_HOST + eigenem Site-Namen bestimmt).
+//
+// Zusaetzlich noetig: der Praefix, unter dem Home-Assistant-Ingress diese
+// Anfrage weiterleitet (z.B. "/api/hassio_ingress/<token>", pro Browser-
+// Session unterschiedlich). WordPress kann diesen Praefix NICHT aus
+// REQUEST_URI ablesen - HAs Supervisor entfernt ihn bereits, bevor die
+// Anfrage den Container erreicht (REQUEST_URI enthaelt hier nur noch
+// "/sites/{site_name}/..."). HA sendet ihn stattdessen separat im Header
+// X-Ingress-Path mit (siehe HA-Add-on-Doku). Ohne diesen Praefix zeigen
+// alle von WordPress selbst generierten absoluten Links (u.a. der
+// wp-login.php-Redirect bei fehlendem Login) am Token vorbei auf die
+// nackte Home-Assistant-Domain -> 404 (live beobachtet). Der Header ist
+// nur ueber den Ingress-Listener vertrauenswuerdig - ueber den
+// oeffentlichen Port (Tailscale Funnel) entfernt Caddy ihn aktiv
+// (siehe caddy_service.STRIP_INGRESS_PATH_DIRECTIVE), er ist dort also nie
+// gesetzt und wird hier entsprechend nicht verwendet.
 if ( defined( 'WP_HOME' ) ) {{
     // Überschreiben ist erlaubt (z.B. in wp-cli Skripten)
 }} else {{
     // $_SERVER['HTTPS'] ist jetzt zuverlaessig (siehe Fix oben) - normale
     // WordPress-Standardpruefung reicht hier.
     $protocol = ( ! empty( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] !== 'off' ) ? 'https://' : 'http://';
-    $site_url_computed = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
-    if ( preg_match( '|^(.+?/sites/[^/]+)/|', $site_url_computed, $m ) ) {{
-        define( 'WP_HOME',    $m[1] );
-        define( 'WP_SITEURL', $m[1] );
-    }} else {{
-        define( 'WP_HOME',    '{site_url}' );
-        define( 'WP_SITEURL', '{site_url}' );
-    }}
+    $ingress_prefix = ! empty( $_SERVER['HTTP_X_INGRESS_PATH'] ) ? $_SERVER['HTTP_X_INGRESS_PATH'] : '';
+    $computed_url = $protocol . $_SERVER['HTTP_HOST'] . $ingress_prefix . '/sites/{site_name}';
+    define( 'WP_HOME',    $computed_url );
+    define( 'WP_SITEURL', $computed_url );
 }}
 
 // Debugging

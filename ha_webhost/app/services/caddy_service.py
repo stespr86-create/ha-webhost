@@ -93,7 +93,7 @@ SITE_BLOCK_PHP = """\
 \t\t\troot * {root}
 \t\t\tphp_fastcgi unix/{socket} {{
 \t\t\t\theader_up X-Forwarded-Proto {{forwarded_proto}}
-\t\t\t}}
+{ingress_path_directive}\t\t\t}}
 \t\t\tfile_server
 \t\t}}
 
@@ -107,10 +107,23 @@ SITE_BLOCK_PYTHON = """\
 \t\thandle_path /sites/{name}/* {{
 \t\t\treverse_proxy 127.0.0.1:{port} {{
 \t\t\t\theader_up X-Forwarded-Proto {{forwarded_proto}}
-\t\t\t}}
+{ingress_path_directive}\t\t\t}}
 \t\t}}
 
 """
+
+# Home Assistant setzt fuer jede ueber Ingress geroutete Anfrage den Header
+# X-Ingress-Path (z.B. "/api/hassio_ingress/<token>") - der einzige Weg fuer
+# eine App im Container, ihren eigenen, sich aendernden externen Praefix zu
+# kennen (siehe generate_wp_config() in wordpress_service.py: WordPress
+# braucht das fuer eigene absolute Redirects wie den wp-login.php-Bounce,
+# sonst zeigen die am Token vorbei auf die nackte HA-Domain -> 404). Der
+# Header ist nur ueber den Ingress-Listener (:8000, nur aus dem internen
+# HA-Supervisor-Netz erreichbar, siehe config.yaml "8000/tcp: null")
+# vertrauenswuerdig - ueber den OEFFENTLICHEN Port koennte ihn jeder
+# Besucher frei faelschen. Deshalb hier aktiv entfernt, bevor eine Anfrage
+# ueber den oeffentlichen Listener den PHP-/Python-Prozess erreicht.
+STRIP_INGRESS_PATH_DIRECTIVE = "\t\t\t\theader_up -X-Ingress-Path\n"
 
 # Galerie-Sites brauchen einen kleinen Backend-Endpunkt fuer
 # Foto-Upload/-Liste (services/gallery_service.py), auch auf dem
@@ -178,25 +191,32 @@ def render_caddyfile(
     php_names = set(php_site_names)
     python_site_ports = python_site_ports or {}
 
-    def block_for(name: str) -> str:
+    def block_for(name: str, is_public: bool) -> str:
         root = str(SITES_DIR / name)
+        ingress_path_directive = STRIP_INGRESS_PATH_DIRECTIVE if is_public else ""
         if name in php_names:
-            return SITE_BLOCK_PHP.format(name=name, root=root, socket=php_fpm_service.socket_path(name))
+            return SITE_BLOCK_PHP.format(
+                name=name, root=root, socket=php_fpm_service.socket_path(name),
+                ingress_path_directive=ingress_path_directive,
+            )
         if name in python_site_ports:
-            return SITE_BLOCK_PYTHON.format(name=name, port=python_site_ports[name])
+            return SITE_BLOCK_PYTHON.format(
+                name=name, port=python_site_ports[name], ingress_path_directive=ingress_path_directive,
+            )
         return SITE_BLOCK.format(name=name, root=root)
 
-    site_blocks = "".join(block_for(name) for name in names)
+    ingress_site_blocks = "".join(block_for(name, is_public=False) for name in names)
+    public_site_blocks = "".join(block_for(name, is_public=True) for name in names)
     redirect_blocks = "".join(REDIRECT_BLOCK.format(name=name) for name in names)
     api_proxy_block = API_PROXY_BLOCK.format(backend_port=BACKEND_INTERNAL_PORT)
 
     ingress_block = (
-        INGRESS_HEADER + api_proxy_block + PROTO_MAP_BLOCK + redirect_blocks + site_blocks
+        INGRESS_HEADER + api_proxy_block + PROTO_MAP_BLOCK + redirect_blocks + ingress_site_blocks
         + INGRESS_FOOTER.format(backend_port=BACKEND_INTERNAL_PORT)
     )
     public_block = (
         PUBLIC_HEADER.format(public_port=CADDY_PUBLIC_SITES_PORT)
-        + api_proxy_block + PROTO_MAP_BLOCK + redirect_blocks + site_blocks + PUBLIC_FOOTER
+        + api_proxy_block + PROTO_MAP_BLOCK + redirect_blocks + public_site_blocks + PUBLIC_FOOTER
     )
 
     return GLOBAL_OPTS + ingress_block + "\n" + public_block
