@@ -63,8 +63,12 @@ async function loadSites() {
 						${site.source_type === "git" ? `<button data-action="redeploy" data-name="${site.name}">Redeploy</button>` : ""}
 						${["upload", "php", "python"].includes(site.source_type) ? `<button data-action="redeploy-upload" data-name="${site.name}" data-source-type="${site.source_type}">🔄 Update</button>` : ""}
 						${site.source_type === "gallery" ? `<button data-action="refresh-gallery" data-name="${site.name}" title="Holt die neueste Galerie-Oberfläche - Fotos bleiben erhalten">🔄 Seite aktualisieren</button>` : ""}
+						<button data-action="monitoring" data-name="${site.name}">📊 Monitoring</button>
 						<button data-action="delete" data-name="${site.name}" class="danger">Löschen</button>
 					</td>
+				</tr>
+				<tr class="monitoring-details" data-monitoring-for="${escapeHtml(site.name)}" style="display:none">
+					<td colspan="5" style="font-size: 0.9em; color: #555;"></td>
 				</tr>
 			`;
 		})
@@ -115,6 +119,35 @@ sitesBody.addEventListener("click", async (event) => {
 		} else {
 			const err = await res.json();
 			showStatus(`Fehler: ${err.detail}`, true);
+		}
+	}
+
+	if (action === "monitoring") {
+		const detailsRow = sitesBody.querySelector(`tr.monitoring-details[data-monitoring-for="${CSS.escape(name)}"]`);
+		if (!detailsRow) return;
+		const cell = detailsRow.querySelector("td");
+
+		if (detailsRow.style.display !== "none") {
+			detailsRow.style.display = "none";
+			return;
+		}
+
+		detailsRow.style.display = "";
+		cell.textContent = "Lädt…";
+		try {
+			const res = await fetch(`api/sites/${name}/monitoring`);
+			const data = await res.json();
+			if (!res.ok) throw new Error(data.detail || "Fehler beim Laden.");
+
+			const parts = [`💾 Speicher: ${data.disk_mb} MB`];
+			if (data.running === true) {
+				parts.push(`🟢 läuft (${data.process_count} Prozess${data.process_count === 1 ? "" : "e"}) · RAM: ${data.ram_mb} MB · CPU: ${data.cpu_percent}%`);
+			} else if (data.running === false) {
+				parts.push("⚪ aktuell kein laufender Prozess (RAM/CPU: 0)");
+			}
+			cell.textContent = parts.join("  ·  ");
+		} catch (err) {
+			cell.textContent = `Fehler: ${err.message}`;
 		}
 	}
 

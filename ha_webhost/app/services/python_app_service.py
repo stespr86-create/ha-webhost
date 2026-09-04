@@ -18,7 +18,7 @@ import os
 import signal
 import subprocess
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Optional
 
 from core.config import PYTHON_APP_BASE_PORT, PYTHON_APP_PID_DIR
 
@@ -60,14 +60,18 @@ def setup_dependencies(site_dir: Path) -> None:
         raise RuntimeError(f"pip install fehlgeschlagen: {result.stderr.decode(errors='replace').strip()[-2000:]}")
 
 
-def is_running(name: str) -> bool:
+def get_pid(name: str) -> Optional[int]:
+    """Gibt die PID des laufenden App-Prozesses zurück, oder None (nicht
+    gestartet oder bereits beendet). Wird sowohl von is_running() als auch
+    vom Monitoring (services/monitoring_service.py) genutzt, um RAM/CPU des
+    Prozesses ueber /proc/<pid>/... auszulesen."""
     pid_file = _pid_file(name)
     if not pid_file.exists():
-        return False
+        return None
     try:
         pid = int(pid_file.read_text().strip())
     except ValueError:
-        return False
+        return None
 
     # Falls der Prozess noch ein direktes Kind dieses Backend-Prozesses ist
     # (selbes Backend-Leben wie beim Start) und bereits beendet wurde, wird
@@ -82,15 +86,19 @@ def is_running(name: str) -> bool:
     try:
         reaped_pid, _status = os.waitpid(pid, os.WNOHANG)
         if reaped_pid == pid:
-            return False
+            return None
     except ChildProcessError:
         pass
 
     try:
         os.kill(pid, 0)
-        return True
+        return pid
     except OSError:
-        return False
+        return None
+
+
+def is_running(name: str) -> bool:
+    return get_pid(name) is not None
 
 
 def stop(name: str) -> None:

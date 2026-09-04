@@ -45,7 +45,7 @@ im HA-Ingress-Panel.
 - Datenbank-Verwaltung für eigene/generische Apps (MariaDB/PostgreSQL) -
   WordPress-Datenbanken werden automatisch verwaltet, das ist unabhängig
   davon
-- Automatische Backups nach Zeitplan, Monitoring, Live-Log-Viewer
+- Automatische Backups nach Zeitplan, Live-Log-Viewer
 - Mehrere gleichzeitige Admin-Benutzer (Auth läuft komplett über HA)
 
 Grund: Auf typischer HA-Hardware (insbesondere < 8 GB RAM) sprengt der volle
@@ -448,5 +448,23 @@ zurückgestellt.
      isoliert (`pip install --target=.deps`, zur Laufzeit per `PYTHONPATH`
      eingebunden - kein eigenes virtualenv, das venv-Stdlib-Modul ist auf
      Alpine nicht zuverlässig garantiert vorhanden).
-3. **Phase 4**: MariaDB/PostgreSQL-Provisioning, automatische
-   Backup-Zeitpläne, Monitoring (CPU/RAM/Storage pro App), Live-Log-Viewer.
+3. **Monitoring - abgeschlossen seit v0.1.27**: Speicherplatz-, RAM- und
+   CPU-Nutzung pro Site, abrufbar über `GET /api/sites/{name}/monitoring`
+   und im Admin-Panel per "📊 Monitoring"-Knopf pro Site. Speicherplatz gibt
+   es für jeden Site-Typ (rekursive Verzeichnisgröße). RAM/CPU gibt es nur
+   für Site-Typen mit eigenem Prozess:
+   - **Python-Apps**: trivial, da bereits eine PID pro Site getrackt wird
+     (`python_app_service.get_pid()`) - RAM/CPU direkt aus `/proc/<pid>/...`.
+   - **WordPress/PHP-Upload**: PHP-FPM (`pm=ondemand`) hat keine feste PID
+     pro Pool - Worker-Prozesse werden stattdessen über den von PHP-FPM
+     gesetzten Prozesstitel gefunden (`php-fpm: pool <name>`, sichtbar unter
+     `/proc/<pid>/cmdline`). Ist ein Pool gerade idle, gibt es schlicht
+     keinen Worker - RAM/CPU werden dann als 0 ausgewiesen (`running: false`,
+     normaler Leerlauf-Zustand, kein Fehler).
+   - **Statische/Git-/Galerie-Sites**: kein eigener Prozess, nur
+     Speicherplatz (`running: null`).
+   - Implementierung bewusst ohne Sub-Prozess-Aufruf (kein `ps`, kein
+     `shell_exec`) - liest ausschließlich direkt aus dem `/proc`-
+     Pseudo-Dateisystem, siehe `services/monitoring_service.py`.
+4. **Phase 4**: MariaDB/PostgreSQL-Provisioning, automatische
+   Backup-Zeitpläne, Live-Log-Viewer.

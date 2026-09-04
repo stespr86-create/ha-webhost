@@ -13,7 +13,7 @@ from core.crypto import DecryptionError
 from core.db import get_session
 from core.security import InvalidSiteName, PathTraversal, UnsafeArchive
 from models.site import SitePublic, SiteStatus, SourceType
-from services import site_service, zip_service, backup_service, health_service, wordpress_updates_service, wordpress_validator, wordpress_marketplace
+from services import site_service, zip_service, backup_service, health_service, monitoring_service, wordpress_updates_service, wordpress_validator, wordpress_marketplace
 from services.git_service import GitError
 
 router = APIRouter(prefix="/api/sites", tags=["sites"])
@@ -195,6 +195,23 @@ def refresh_gallery(name: str, session: Session = Depends(get_session)):
         return site_service.refresh_gallery_frontend(session, name)
     except ValueError as exc:
         raise HTTPException(404, str(exc)) from exc
+
+
+@router.get("/{name}/monitoring", response_model=dict)
+def site_monitoring(name: str, session: Session = Depends(get_session)):
+    """Speicherplatz-, RAM- und CPU-Nutzung einer Site. RAM/CPU gibt es nur
+    fuer Site-Typen mit eigenem Prozess (Python-Apps, WordPress/PHP-Upload
+    via PHP-FPM) - "running": false bei einem gerade idlen PHP-FPM-Pool
+    (pm=ondemand) ist normal, kein Fehler. Bei statischen/Git-/Galerie-Sites
+    gibt es "running": null, dort nur Speicherplatz."""
+    site = site_service.get_site(session, name)
+    if not site:
+        raise HTTPException(404, f"Site '{name}' nicht gefunden.")
+
+    try:
+        return monitoring_service.get_site_monitoring(site)
+    except Exception as exc:
+        raise HTTPException(422, f"Monitoring fehlgeschlagen: {str(exc)}") from exc
 
 
 @router.get("/{name}/health", response_model=dict)

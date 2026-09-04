@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.1.27
+
+- **Neu: Monitoring (CPU/RAM/Speicherplatz pro Site)** - letzter offene
+  Punkt aus Roadmap Phase 4. Neuer Endpunkt `GET /api/sites/{name}/monitoring`
+  + "📊 Monitoring"-Knopf im Admin-Panel (klappt eine Detailzeile mit den
+  aktuellen Werten auf).
+- Speicherplatz wird für jeden Site-Typ ermittelt (rekursive
+  Verzeichnisgröße, reines Python via `os.walk` - kein `du`-Sub-Prozess
+  nötig).
+- RAM/CPU gibt es nur für Site-Typen mit eigenem Prozess: Python-Apps
+  (PID bereits über `python_app_service` getrackt) sowie WordPress/
+  PHP-Upload (PHP-FPM-Worker werden über den von PHP-FPM gesetzten
+  Prozesstitel "php-fpm: pool &lt;name&gt;" gefunden, da `pm=ondemand`
+  keine feste PID pro Pool erlaubt). Ist ein PHP-FPM-Pool gerade idle,
+  liefert die API korrekt "kein laufender Prozess" statt eines Fehlers.
+  Statische/Git-/Galerie-Sites zeigen nur den Speicherplatz.
+- Implementierung bewusst ohne jeden Sub-Prozess-Aufruf für die
+  Prozess-Metriken (kein `ps`, kein `shell_exec`) - liest ausschließlich
+  direkt aus dem `/proc`-Pseudo-Dateisystem (`services/monitoring_service.py`).
+
 ## 0.1.26
 
 - **Fix: Caddy selbst hat `X-Forwarded-Proto: http` an PHP-/Python-Sites
