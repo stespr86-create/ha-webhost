@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.19
+
+- **Fix: `wp core install` (0.1.18) schlug fehl** - "Class 'Phar' not
+  found". Der Container hatte nie die PHP-Extension `phar` installiert,
+  ohne die sich die wp-cli `.phar`-Datei selbst nicht ausführen lässt.
+  Vermutlich schon immer kaputt, fiel aber nie auf, da vor 0.1.15
+  niemand echten PHP-Code (inkl. wp-cli-Aufrufen) auf einer laufenden
+  Site testen konnte. Ergänzt außerdem weitere von WordPress-Core und
+  wp-cli üblicherweise benötigte Extensions, die ebenfalls fehlten:
+  mbstring, xml, dom, simplexml, ctype, tokenizer, openssl, zip (u.a.
+  für Multibyte-Strings, XML-Verarbeitung und Plugin-/Theme-Installation
+  per ZIP).
+
 ## 0.1.18
 
 - **Fix: WordPress-Datenbank-Setup war unvollständig (eigenständiger,

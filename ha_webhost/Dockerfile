@@ -16,6 +16,21 @@ RUN apk add --no-cache \
         php82-gd \
         php82-curl \
         php82-json \
+        # phar/mbstring/xml/dom/simplexml/ctype/tokenizer/openssl/zip: von
+        # wp-cli (phar-Datei, "Class Phar not found" ohne php82-phar) und
+        # WordPress-Core selbst benoetigt (u.a. Plugin-/Theme-Installation
+        # per ZipArchive, Multibyte-Strings, XML-Verarbeitung) - fehlten
+        # bisher komplett, fiel nie auf da PHP vor 0.1.15 nie ausgefuehrt
+        # wurde.
+        php82-phar \
+        php82-mbstring \
+        php82-xml \
+        php82-dom \
+        php82-simplexml \
+        php82-ctype \
+        php82-tokenizer \
+        php82-openssl \
+        php82-zip \
         curl
 
 # WordPress CLI installieren
