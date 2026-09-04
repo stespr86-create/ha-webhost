@@ -13,7 +13,7 @@ from core.crypto import DecryptionError
 from core.db import get_session
 from core.security import InvalidSiteName, PathTraversal, UnsafeArchive
 from models.site import SitePublic, SiteStatus, SourceType
-from services import site_service, zip_service, backup_service, health_service, monitoring_service, wordpress_updates_service, wordpress_validator, wordpress_marketplace
+from services import site_service, zip_service, backup_service, health_service, monitoring_service, log_service, wordpress_updates_service, wordpress_validator, wordpress_marketplace
 from services.git_service import GitError
 
 router = APIRouter(prefix="/api/sites", tags=["sites"])
@@ -212,6 +212,24 @@ def site_monitoring(name: str, session: Session = Depends(get_session)):
         return monitoring_service.get_site_monitoring(site)
     except Exception as exc:
         raise HTTPException(422, f"Monitoring fehlgeschlagen: {str(exc)}") from exc
+
+
+@router.get("/{name}/logs", response_model=dict)
+def site_logs(name: str, lines: int = 200, session: Session = Depends(get_session)):
+    """Letzte Log-Zeilen einer Site (Live-Log-Viewer). Nur fuer Site-Typen mit
+    eigenem Prozess verfuegbar: Python-Apps (App-Ausgabe) und WordPress/
+    PHP-Upload (PHP-Fehler-Log des zugehoerigen PHP-FPM-Pools). Bei
+    statischen/Git-/Galerie-Sites "available": false - dort gibt es keinen
+    eigenen Prozess und damit kein Anwendungs-Log."""
+    site = site_service.get_site(session, name)
+    if not site:
+        raise HTTPException(404, f"Site '{name}' nicht gefunden.")
+
+    lines = max(1, min(lines, 1000))
+    try:
+        return log_service.read_log(name, site.source_type, lines)
+    except Exception as exc:
+        raise HTTPException(422, f"Logs konnten nicht gelesen werden: {str(exc)}") from exc
 
 
 @router.get("/{name}/health", response_model=dict)

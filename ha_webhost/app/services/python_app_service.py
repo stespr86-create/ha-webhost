@@ -20,7 +20,7 @@ import subprocess
 from pathlib import Path
 from typing import Iterable, Optional
 
-from core.config import PYTHON_APP_BASE_PORT, PYTHON_APP_PID_DIR
+from core.config import LOGS_DIR, PYTHON_APP_BASE_PORT, PYTHON_APP_PID_DIR
 
 logger = logging.getLogger("webhost.python_app")
 
@@ -37,8 +37,11 @@ def _pid_file(name: str) -> Path:
     return PYTHON_APP_PID_DIR / f"{name}.pid"
 
 
-def _log_file(site_dir: Path) -> Path:
-    return site_dir / ".app.log"
+def log_path(name: str) -> Path:
+    """Stdout/stderr-Log des App-Prozesses - zentral unter LOGS_DIR (siehe
+    services/log_service.py), nicht im Site-Verzeichnis selbst (landet sonst
+    versehentlich in ZIP-Backups/Datei-Manager)."""
+    return LOGS_DIR / f"{name}.log"
 
 
 def setup_dependencies(site_dir: Path) -> None:
@@ -136,7 +139,7 @@ def start(name: str, site_dir: Path, port: int) -> None:
         existing = env.get("PYTHONPATH", "")
         env["PYTHONPATH"] = str(deps) + (os.pathsep + existing if existing else "")
 
-    with open(_log_file(site_dir), "ab") as log:
+    with open(log_path(name), "ab") as log:
         process = subprocess.Popen(
             ["python3", str(entry)],
             cwd=site_dir,

@@ -45,7 +45,7 @@ im HA-Ingress-Panel.
 - Datenbank-Verwaltung für eigene/generische Apps (MariaDB/PostgreSQL) -
   WordPress-Datenbanken werden automatisch verwaltet, das ist unabhängig
   davon
-- Automatische Backups nach Zeitplan, Live-Log-Viewer
+- Automatische Backups nach Zeitplan (bewusst nicht geplant)
 - Mehrere gleichzeitige Admin-Benutzer (Auth läuft komplett über HA)
 
 Grund: Auf typischer HA-Hardware (insbesondere < 8 GB RAM) sprengt der volle
@@ -466,5 +466,25 @@ zurückgestellt.
    - Implementierung bewusst ohne Sub-Prozess-Aufruf (kein `ps`, kein
      `shell_exec`) - liest ausschließlich direkt aus dem `/proc`-
      Pseudo-Dateisystem, siehe `services/monitoring_service.py`.
-4. **Phase 4**: MariaDB/PostgreSQL-Provisioning, automatische
-   Backup-Zeitpläne, Live-Log-Viewer.
+4. **Live-Log-Viewer - abgeschlossen seit v0.1.28**: letzte Log-Zeilen einer
+   Site direkt im Admin-Panel, abrufbar über `GET /api/sites/{name}/logs`
+   und per "📜 Logs"-Knopf. Verfügbar für Site-Typen mit eigenem Prozess:
+   - **Python-Apps**: stdout/stderr des App-Prozesses.
+   - **WordPress/PHP-Upload**: PHP-Fehler-Log des zugehörigen PHP-FPM-Pools
+     (`catch_workers_output` + `error_log` je Pool, siehe
+     `php_fpm_service.py`) - vorher gingen PHP-Fehler faktisch ins Leere
+     (nur im gemeinsamen Caddy-Zugriffslog sichtbar, wenn überhaupt).
+   - **Statische/Git-/Galerie-Sites**: kein eigener Prozess, `available:
+     false`.
+   - Logs liegen zentral unter `/data/logs/` statt im Site-Verzeichnis
+     selbst - landen dadurch nicht versehentlich in ZIP-Backups oder im
+     Datei-Manager der Site, überleben aber (anders als `/run`) einen
+     Container-Neustart. Siehe `services/log_service.py`.
+   - Bewusst kein automatisches Live-Tailing/WebSocket - ein "🔄 neu laden"
+     per Knopf-Klick reicht für den Zweck (Fehlersuche) und hält die
+     Implementierung einfach.
+5. **Bewusst nicht geplant**: automatische Backup-Zeitpläne (auf
+   ausdrücklichen Wunsch nicht Teil des Projekts - Backups bleiben manuell
+   über "Alle Sites sichern"/die Health-Check-Backups pro WordPress-Site).
+   MariaDB/PostgreSQL-Provisioning für generische PHP-/Python-Apps ist
+   weiterhin offen (Phase 4).

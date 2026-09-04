@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.1.28
+
+- **Neu: Live-Log-Viewer pro Site** - letzter offene Punkt aus Roadmap
+  Phase 4 (automatische Backup-Zeitpläne bewusst ausgenommen). Neuer
+  Endpunkt `GET /api/sites/{name}/logs` + "📜 Logs"-Knopf im Admin-Panel
+  (klappt eine Detailzeile mit den letzten 200 Zeilen auf).
+- Verfügbar für Site-Typen mit eigenem Prozess: Python-Apps (App-Ausgabe)
+  und WordPress/PHP-Upload (PHP-Fehler-Log des zugehörigen PHP-FPM-Pools -
+  neu: `catch_workers_output` + `error_log` je Pool, vorher gingen
+  PHP-Fehler faktisch ins Leere). Statische/Git-/Galerie-Sites haben kein
+  Anwendungs-Log (`available: false`).
+- Logs liegen zentral unter `/data/logs/` statt im Site-Verzeichnis selbst
+  (u.a. Python-App-Log von `<site>/.app.log` dorthin verschoben) - landen
+  dadurch nicht mehr versehentlich in ZIP-Backups oder im Datei-Manager der
+  Site, überleben aber (anders als `/run`) einen Container-Neustart.
+- Bewusst kein automatisches Live-Tailing/WebSocket - ein Klick auf
+  "🔄 neu laden" reicht für den Zweck (Fehlersuche).
+
 ## 0.1.27
 
 - **Neu: Monitoring (CPU/RAM/Speicherplatz pro Site)** - letzter offene

@@ -3,7 +3,7 @@ import subprocess
 from pathlib import Path
 from typing import Iterable
 
-from core.config import PHP_FPM_PID_FILE, PHP_FPM_POOL_DIR, PHP_FPM_SOCKET_DIR
+from core.config import LOGS_DIR, PHP_FPM_PID_FILE, PHP_FPM_POOL_DIR, PHP_FPM_SOCKET_DIR
 
 logger = logging.getLogger("webhost.php_fpm")
 
@@ -25,6 +25,9 @@ pm.max_requests = 200
 php_admin_value[memory_limit] = 128M
 php_admin_value[upload_max_filesize] = 64M
 php_admin_value[post_max_size] = 64M
+php_admin_flag[log_errors] = on
+php_admin_value[error_log] = {error_log}
+catch_workers_output = yes
 """
 
 # PHP-FPM verweigert den Start komplett ("No pool defined"), wenn der per
@@ -52,8 +55,15 @@ def socket_path(name: str) -> Path:
     return PHP_FPM_SOCKET_DIR / f"{name}.sock"
 
 
+def error_log_path(name: str) -> Path:
+    """PHP-Fehler-Log des Pools - zentral unter LOGS_DIR (siehe
+    services/log_service.py), damit Live-Log-Viewer und Datei-Manager der
+    Site sich nicht in die Quere kommen."""
+    return LOGS_DIR / f"{name}-php.log"
+
+
 def render_pool(name: str) -> str:
-    return POOL_TEMPLATE.format(name=name, socket=socket_path(name))
+    return POOL_TEMPLATE.format(name=name, socket=socket_path(name), error_log=error_log_path(name))
 
 
 def sync_pools(php_site_names: Iterable[str]) -> None:

@@ -64,11 +64,15 @@ async function loadSites() {
 						${["upload", "php", "python"].includes(site.source_type) ? `<button data-action="redeploy-upload" data-name="${site.name}" data-source-type="${site.source_type}">🔄 Update</button>` : ""}
 						${site.source_type === "gallery" ? `<button data-action="refresh-gallery" data-name="${site.name}" title="Holt die neueste Galerie-Oberfläche - Fotos bleiben erhalten">🔄 Seite aktualisieren</button>` : ""}
 						<button data-action="monitoring" data-name="${site.name}">📊 Monitoring</button>
+						<button data-action="logs" data-name="${site.name}">📜 Logs</button>
 						<button data-action="delete" data-name="${site.name}" class="danger">Löschen</button>
 					</td>
 				</tr>
 				<tr class="monitoring-details" data-monitoring-for="${escapeHtml(site.name)}" style="display:none">
 					<td colspan="5" style="font-size: 0.9em; color: #555;"></td>
+				</tr>
+				<tr class="logs-details" data-logs-for="${escapeHtml(site.name)}" style="display:none">
+					<td colspan="5"></td>
 				</tr>
 			`;
 		})
@@ -151,6 +155,23 @@ sitesBody.addEventListener("click", async (event) => {
 		}
 	}
 
+	if (action === "logs") {
+		const detailsRow = sitesBody.querySelector(`tr.logs-details[data-logs-for="${CSS.escape(name)}"]`);
+		if (!detailsRow) return;
+		detailsRow.style.display = "";
+		await loadSiteLogs(name, detailsRow);
+	}
+
+	if (action === "logs-close") {
+		const detailsRow = sitesBody.querySelector(`tr.logs-details[data-logs-for="${CSS.escape(name)}"]`);
+		if (detailsRow) detailsRow.style.display = "none";
+	}
+
+	if (action === "logs-refresh") {
+		const detailsRow = sitesBody.querySelector(`tr.logs-details[data-logs-for="${CSS.escape(name)}"]`);
+		if (detailsRow) await loadSiteLogs(name, detailsRow);
+	}
+
 	if (action === "redeploy-upload") {
 		redeployUploadTarget = name;
 		const endpoints = { php: "api/sites/php-upload", python: "api/sites/python-upload" };
@@ -158,6 +179,35 @@ sitesBody.addEventListener("click", async (event) => {
 		redeployUploadInput.click();
 	}
 });
+
+async function loadSiteLogs(name, detailsRow) {
+	const cell = detailsRow.querySelector("td");
+	cell.textContent = "Lädt…";
+	try {
+		const res = await fetch(`api/sites/${name}/logs?lines=200`);
+		const data = await res.json();
+		if (!res.ok) throw new Error(data.detail || "Fehler beim Laden.");
+
+		cell.innerHTML = "";
+		const controls = document.createElement("div");
+		controls.style.cssText = "margin-bottom: 4px;";
+		controls.innerHTML = `<button type="button" data-action="logs-refresh" data-name="${escapeHtml(name)}">🔄 Aktualisieren</button> <button type="button" data-action="logs-close" data-name="${escapeHtml(name)}">✕ Schließen</button>`;
+		cell.appendChild(controls);
+
+		if (!data.available) {
+			cell.appendChild(document.createTextNode("Für diesen Site-Typ gibt es kein Anwendungs-Log."));
+		} else if (data.lines.length === 0) {
+			cell.appendChild(document.createTextNode("Noch keine Log-Einträge."));
+		} else {
+			const pre = document.createElement("pre");
+			pre.style.cssText = "max-height: 300px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; margin: 0; font-size: 0.85em;";
+			pre.textContent = data.lines.join("\n");
+			cell.appendChild(pre);
+		}
+	} catch (err) {
+		cell.textContent = `Fehler: ${err.message}`;
+	}
+}
 
 const redeployUploadInput = document.getElementById("redeploy-upload-input");
 let redeployUploadTarget = null;

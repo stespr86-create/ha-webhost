@@ -17,6 +17,13 @@ PHP_FPM_POOL_DIR = DATA_DIR / "php-fpm-pools"
 PHP_FPM_SOCKET_DIR = Path("/run/php-fpm")
 PHP_FPM_PID_FILE = Path("/run/php-fpm.pid")
 
+# Live-Log-Viewer (siehe services/log_service.py): Anwendungs-Logs pro Site
+# (Python-App-Ausgabe, PHP-FPM-Pool-Fehlerlog) liegen zentral hier statt im
+# Site-Verzeichnis selbst - so landen sie nicht versehentlich in ZIP-Backups
+# oder im Datei-Manager der Site und ueberleben trotzdem (anders als /run)
+# einen Container-Neustart.
+LOGS_DIR = DATA_DIR / "logs"
+
 # Python-App-Hosting: pro Site ein eigener, ueberwachter Prozess statt
 # Docker-Container - kein docker_api noetig, siehe services/python_app_service.py.
 # Abhaengigkeiten werden isoliert per PYTHONPATH installiert (kein venv - das
@@ -53,3 +60,4 @@ GALLERY_MAX_DIMENSION = 1600  # px, laengste Kante nach Verkleinerung
 GALLERY_JPEG_QUALITY = 82
 
 SITES_DIR.mkdir(parents=True, exist_ok=True)
+LOGS_DIR.mkdir(parents=True, exist_ok=True)
