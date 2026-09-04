@@ -2,8 +2,7 @@
 
 mkdir -p /data/sites
 mkdir -p /data/mariadb
-mkdir -p /var/log/nginx
-mkdir -p /var/cache/nginx
+mkdir -p /data/php-fpm-pools
 mkdir -p /run/php-fpm
 
 # MariaDB beim ersten Start initialisieren
@@ -32,12 +31,10 @@ if [ ! -f /data/Caddyfile ]; then
 	# bevor geroutet wird.
 	uri replace // / 1
 
+	# Nur ein kurzzeitiger Platzhalter bis die App startet und ueber
+	# services/caddy_service.py die echte, aus der DB generierte Caddyfile
+	# schreibt (inkl. php_fastcgi-Routing fuer PHP-Sites) - siehe dort.
 	route {
-		# WordPress-Sites: zu Nginx (Port 8080)
-		handle_path /sites/* {
-			reverse_proxy 127.0.0.1:8080
-		}
-		# Alles andere: zu WebHost-Backend (Python)
 		reverse_proxy 127.0.0.1:8001
 	}
 }

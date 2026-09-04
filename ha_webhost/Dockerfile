@@ -10,7 +10,6 @@ RUN apk add --no-cache \
         zlib \
         mariadb \
         mariadb-client \
-        nginx \
         php82 \
         php82-fpm \
         php82-mysqli \
@@ -22,6 +21,17 @@ RUN apk add --no-cache \
 # WordPress CLI installieren
 RUN curl -o /usr/local/bin/wp https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && \
     chmod +x /usr/local/bin/wp
+
+# PHP-FPM auf pro-Site-Pools umstellen statt eines einzelnen geteilten
+# Pools: Standard-Pool (www.conf) entfernen, Pool-Configs stattdessen aus
+# /data laden (dynamisch von services/php_fpm_service.py erzeugt/verwaltet,
+# analog zur Caddyfile - siehe core/config.py PHP_FPM_POOL_DIR) und eine
+# feste PID-Datei setzen, damit die App per SIGUSR2 einen Reload ausloesen
+# kann, ohne laufende Requests abzubrechen.
+RUN rm -f /etc/php82/php-fpm.d/www.conf \
+    && sed -i '/^pid = /d' /etc/php82/php-fpm.conf \
+    && sed -i 's#^include=.*#include=/data/php-fpm-pools/*.conf#' /etc/php82/php-fpm.conf \
+    && echo 'pid = /run/php-fpm.pid' >> /etc/php82/php-fpm.conf
 
 WORKDIR /app
 

@@ -8,6 +8,7 @@ from core.config import (
     CADDY_PUBLIC_SITES_PORT,
     SITES_DIR,
 )
+from services import php_fpm_service
 
 logger = logging.getLogger("webhost.caddy")
 
@@ -82,6 +83,20 @@ SITE_BLOCK = """\
 
 """
 
+# PHP-faehige Sites (aktuell: WordPress) - Caddys eingebautes php_fastcgi
+# spricht direkt per FastCGI mit dem site-eigenen PHP-FPM-Pool (siehe
+# services/php_fpm_service.py, ein Unix-Socket pro Site). Kein nginx als
+# Zwischenstation mehr noetig. php_fastcgi bringt try_files/index.php-
+# Fallback fuer WordPress-Permalinks bereits eingebaut mit.
+SITE_BLOCK_PHP = """\
+\t\thandle_path /sites/{name}/* {{
+\t\t\troot * {root}
+\t\t\tphp_fastcgi unix/{socket}
+\t\t\tfile_server
+\t\t}}
+
+"""
+
 # Galerie-Sites brauchen einen kleinen Backend-Endpunkt fuer
 # Foto-Upload/-Liste (services/gallery_service.py), auch auf dem
 # OEFFENTLICHEN Port - Gaeste haben keinen HA-Login. Bewusst nur dieser
@@ -100,9 +115,17 @@ API_PROXY_BLOCK = """\
 """
 
 
-def render_caddyfile(site_names: Iterable[str]) -> str:
+def render_caddyfile(site_names: Iterable[str], php_site_names: Iterable[str] = ()) -> str:
     names = sorted(site_names)
-    site_blocks = "".join(SITE_BLOCK.format(name=name, root=str(SITES_DIR / name)) for name in names)
+    php_names = set(php_site_names)
+
+    def block_for(name: str) -> str:
+        root = str(SITES_DIR / name)
+        if name in php_names:
+            return SITE_BLOCK_PHP.format(name=name, root=root, socket=php_fpm_service.socket_path(name))
+        return SITE_BLOCK.format(name=name, root=root)
+
+    site_blocks = "".join(block_for(name) for name in names)
     api_proxy_block = API_PROXY_BLOCK.format(backend_port=BACKEND_INTERNAL_PORT)
 
     ingress_block = (
@@ -117,7 +140,7 @@ def render_caddyfile(site_names: Iterable[str]) -> str:
     return GLOBAL_OPTS + ingress_block + "\n" + public_block
 
 
-def write_and_reload(site_names: Iterable[str]) -> None:
+def write_and_reload(site_names: Iterable[str], php_site_names: Iterable[str] = ()) -> None:
     """Schreibt die Caddyfile und stößt einen Reload an.
 
     Ein fehlgeschlagener Reload (Caddy nicht erreichbar, Binary fehlt) darf
@@ -125,7 +148,7 @@ def write_and_reload(site_names: Iterable[str]) -> None:
     bereits korrekt auf der Platte, nur der Proxy hinkt dann bis zum
     nächsten erfolgreichen Reload hinterher.
     """
-    CADDY_CONFIG_PATH.write_text(render_caddyfile(site_names))
+    CADDY_CONFIG_PATH.write_text(render_caddyfile(site_names, php_site_names))
 
     try:
         result = subprocess.run(

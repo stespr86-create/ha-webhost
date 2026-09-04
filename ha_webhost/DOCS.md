@@ -15,6 +15,10 @@ im HA-Ingress-Panel.
 - Fotogalerie-Sites: gemeinsame Foto-Wand, auf die jeder mit dem Link ohne
   eigenen Account Fotos hochladen kann (z.B. für ein Familienfest) - Fotos
   liegen direkt auf diesem Server, siehe Abschnitt "Fotogalerie-Sites"
+- WordPress-Sites: vollständiges WordPress inkl. Plugin-/Theme-Marketplace,
+  Updates, Backups, Health-Checks - eigene MariaDB-Datenbank pro Site, PHP
+  läuft über einen **eigenen, ressourcenschonenden PHP-FPM-Pool pro Site**
+  (siehe Abschnitt "PHP-Hosting (WordPress)" unten)
 - Redeploy per Knopfdruck (git pull bei Git-Sites, erneuter ZIP-Upload
   unter demselben Namen bei Upload-Sites – "🔄 Update"-Button)
 - Einfacher Datei-Browser/-Editor über die API (`/api/files/...`)
@@ -29,8 +33,13 @@ im HA-Ingress-Panel.
 
 ### Bewusst NICHT enthalten (siehe Roadmap)
 
-- PHP-/Python-Hosting mit eigenem Laufzeit-Container pro App
-- Datenbank-Verwaltung (MariaDB/PostgreSQL)
+- Generisches PHP-Hosting für eigene/beliebige PHP-Apps (aktuell ist die
+  PHP-FPM-Pool-Verdrahtung nur an den Site-Typ "WordPress" gekoppelt, siehe
+  unten - kein eigener Site-Typ "PHP-Upload" bisher)
+- Python-Hosting mit eigenem Laufzeit-Container pro App
+- Datenbank-Verwaltung für eigene/generische Apps (MariaDB/PostgreSQL) -
+  WordPress-Datenbanken werden automatisch verwaltet, das ist unabhängig
+  davon
 - Automatische Backups nach Zeitplan, Monitoring, Live-Log-Viewer
 - Mehrere gleichzeitige Admin-Benutzer (Auth läuft komplett über HA)
 
@@ -39,6 +48,44 @@ Funktionsumfang aus dem ursprünglichen Konzept die verfügbaren Ressourcen,
 und Docker-Socket-Zugriff für App-Container ist ein erhebliches
 Sicherheitsrisiko (praktisch Root-Zugriff auf den Host). Diese Punkte kommen
 erst in späteren Phasen, dann bewusst und einzeln abgesichert.
+
+## PHP-Hosting (WordPress)
+
+**Update (ab v0.1.15):** WordPress-Sites laufen jetzt tatsächlich - vorher
+wurden sie zwar korrekt angelegt (Datenbank, `wp-config.php`, Dateien), beim
+Aufruf im Browser kam aber ein **404**, weil PHP-Dateien nie ausgeführt
+wurden. Ursache war eine Regression bei der Umstellung von einer statischen
+Caddyfile (die noch zu nginx+PHP-FPM auf Port 8080 durchgereicht hat, siehe
+`cont-init.d/10-init-data.sh`) auf die dynamisch generierte Caddyfile in
+`services/caddy_service.py` - die dynamische Variante hat jede Site
+(inklusive WordPress) nur noch statisch ausgeliefert. `nginx` war dadurch
+faktisch totes Gewicht im Container (installiert, konfiguriert, aber nie im
+tatsächlichen Request-Pfad erreicht) und wurde entfernt.
+
+**Aktuelle Architektur:** Caddy spricht für PHP-Sites direkt per eingebautem
+`php_fastcgi` (FastCGI-Protokoll) mit PHP-FPM - kein nginx mehr als
+Zwischenstation nötig, ein laufender Prozess weniger im Container. Jede
+WordPress-Site bekommt dabei einen **eigenen PHP-FPM-Pool** (eigener
+Unix-Socket unter `/run/php-fpm/<name>.sock`, `services/php_fpm_service.py`):
+
+- `pm = ondemand` statt `dynamic`/`static`: PHP-Worker-Prozesse werden erst
+  bei der ersten Anfrage gestartet und nach Leerlauf (`process_idle_timeout
+  = 15s`) wieder beendet. Eine gerade nicht besuchte Site verbraucht damit
+  dauerhaft **0 MB RAM** statt staendig laufender Leerlauf-Worker - wichtig
+  bei mehreren WordPress-Sites mit wenig gleichzeitigem Traffic auf
+  schwacher Hardware.
+- `pm.max_children = 3` pro Pool (begrenzt maximale gleichzeitige PHP-Last
+  je Site), `memory_limit = 128M` (WordPress-Mindestempfehlung).
+- Pool-Configs liegen (wie die Caddyfile) unter `/data/php-fpm-pools/` und
+  werden bei jedem App-Start sowie bei jedem Anlegen/Löschen einer Site aus
+  dem DB-Stand neu erzeugt (`site_service.sync_proxy()`) - PHP-FPM liest sie
+  per `SIGUSR2` neu ein (graceful reload, laufende Requests werden nicht
+  abgebrochen).
+- **Bekannte Einschränkung:** Nur der Site-Typ `wordpress` bekommt aktuell
+  einen PHP-FPM-Pool zugewiesen. Ein eigener Upload eines beliebigen
+  PHP-Skripts (z.B. über den Site-Typ "ZIP-Upload") wird weiterhin nur
+  statisch ausgeliefert (PHP-Quelltext würde als Text/Download ausgeliefert,
+  nicht ausgeführt) - siehe Roadmap Phase 2 für generisches PHP-Hosting.
 
 ## Bekannte Einschränkung: Sub-Path-Routing
 
@@ -300,13 +347,16 @@ Technisch:
 Reihenfolge auf Wunsch angepasst: PHP-Hosting vorgezogen, Python-Hosting
 zurückgestellt.
 
-1. **Phase 2 (schlanke Variante)**: PHP-Hosting über einen **einzigen,
-   geteilten PHP-FPM-Prozess** im Add-on-Container – läuft als weiterer
-   Subprozess, analog zum bereits vorhandenen Caddy, statt eigener
-   Container pro App. Jede PHP-App bekommt einen eigenen FPM-**Pool**
-   (eigener User/Group, eigenes RAM-Limit über `pm.max_children`), Caddy
-   leitet per `php_fastcgi` direkt an den passenden Pool weiter. Eigene
-   SQLite-Datenbank pro App wie ursprünglich geplant.
+1. **Phase 2 (schlanke Variante) - Mechanismus seit v0.1.15 fürs
+   WordPress-Hosting umgesetzt, generischer Site-Typ steht noch aus**:
+   PHP-Hosting über einen **einzigen, geteilten PHP-FPM-Prozess** im
+   Add-on-Container – läuft als weiterer Subprozess, analog zum bereits
+   vorhandenen Caddy, statt eigener Container pro App. Jede PHP-Site
+   bekommt einen eigenen FPM-**Pool** (eigenes RAM-Limit über
+   `pm.max_children`, `pm=ondemand` für 0 MB RAM im Leerlauf), Caddy
+   leitet per `php_fastcgi` direkt an den passenden Pool weiter - siehe
+   Abschnitt "PHP-Hosting (WordPress)" oben für die tatsächliche
+   Umsetzung und `services/php_fpm_service.py`.
    - **Kein `docker_api: true` nötig** – der ursprünglich größte
      Kritikpunkt (Docker-Socket-Zugriff, siehe Sicherheitshinweis oben)
      entfällt damit komplett.
@@ -317,12 +367,15 @@ zurückgestellt.
      Container-Trennung – ein PHP-Interpreter mit mehreren Pools statt
      komplett getrennter Umgebungen. Für kleine, vertrauenswürdige Apps
      (eigene/Familien-/Vereinsprojekte) ein sinnvoller Kompromiss.
-   - Bewusst **nicht** für CMS-Systeme wie WordPress gedacht – die
-     brauchen eine eigene MySQL/MariaDB-Datenbank (siehe Phase 4) und
-     bringen durch ihr Plugin-Ökosystem ein deutlich größeres
-     Wartungs-/Sicherheitsprofil mit (häufige CVEs, laufender
-     Patch-Bedarf). Das wäre, falls überhaupt gewünscht, eine eigene,
-     gesondert zu bewertende Erweiterung – kein Teil von Phase 2.
+   - **Was noch fehlt:** Ursprünglich war dieser Mechanismus nicht für
+     CMS-Systeme wie WordPress gedacht (wegen deren größerem
+     Wartungs-/Sicherheitsprofil, häufige CVEs), sondern für einen
+     generischen Site-Typ "eigene PHP-App hochladen" (z.B. via ZIP,
+     analog zum bestehenden "ZIP-Upload"-Typ, inkl. eigener
+     SQLite-/MariaDB-Datenbank pro App). WordPress wurde am Ende aber
+     zuerst angebunden, weil dafür schon ein fertiger Site-Typ mit
+     eigener DB-Provisionierung existierte. Der generische PHP-Upload-
+     Site-Typ selbst ist weiterhin offen.
 2. **Phase 3**: Python-App-Hosting (Flask/FastAPI/Django) – anders als PHP
    nicht über ein einheitliches Pool-Modell abbildbar (unterschiedliche
    Python-Versionen/Abhängigkeiten je App), daher weiterhin über je einen

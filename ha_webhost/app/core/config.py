@@ -8,6 +8,15 @@ SITES_DIR = DATA_DIR / "sites"
 DB_PATH = DATA_DIR / "webhost.db"
 CADDY_CONFIG_PATH = DATA_DIR / "Caddyfile"
 
+# PHP-FPM: pro PHP-Site (aktuell: WordPress) ein eigener, ressourcenschonender
+# Pool (pm=ondemand - siehe services/php_fpm_service.py). Pool-Configs liegen
+# in DATA_DIR statt /etc, damit sie wie die Caddyfile bei jedem Start aus dem
+# DB-Stand neu erzeugt werden koennen; Socket/PID-Datei liegen unter /run
+# (tmpfs, vom php-fpm-Service selbst verwaltet).
+PHP_FPM_POOL_DIR = DATA_DIR / "php-fpm-pools"
+PHP_FPM_SOCKET_DIR = Path("/run/php-fpm")
+PHP_FPM_PID_FILE = Path("/run/php-fpm.pid")
+
 BACKEND_INTERNAL_PORT = 8001
 CADDY_INGRESS_PORT = 8000
 

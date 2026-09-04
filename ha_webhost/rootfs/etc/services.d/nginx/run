@@ -1,3 +1,0 @@
-#!/usr/bin/with-contenv bashio
-bashio::log.info "Starte Nginx fuer WordPress-Sites..."
-exec nginx -g "daemon off;"

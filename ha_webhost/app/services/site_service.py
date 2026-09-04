@@ -8,7 +8,7 @@ from core import crypto
 from core.config import SITES_DIR
 from core.security import validate_site_name
 from models.site import Site, SiteStatus, SourceType
-from services import caddy_service, gallery_service, git_service, wordpress_service, zip_service
+from services import caddy_service, gallery_service, git_service, php_fpm_service, wordpress_service, zip_service
 
 
 def list_sites(session: Session) -> list[Site]:
@@ -20,8 +20,12 @@ def get_site(session: Session, name: str) -> Optional[Site]:
 
 
 def sync_proxy(session: Session) -> None:
-    names = [s.name for s in list_sites(session) if s.status == SiteStatus.active]
-    caddy_service.write_and_reload(names)
+    active_sites = [s for s in list_sites(session) if s.status == SiteStatus.active]
+    names = [s.name for s in active_sites]
+    php_names = [s.name for s in active_sites if s.source_type == SourceType.wordpress]
+
+    php_fpm_service.sync_pools(php_names)
+    caddy_service.write_and_reload(names, php_names)
 
 
 def create_site_from_upload(session: Session, name: str, upload_bytes: bytes) -> Site:

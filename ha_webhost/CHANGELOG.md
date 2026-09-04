@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.15
+
+- **Fix: WordPress-Sites waren nicht aufrufbar (404).** PHP wurde nie
+  ausgeführt - eine Regression aus der Umstellung auf die dynamisch
+  generierte Caddyfile hatte die vorgesehene Weiterleitung an nginx+PHP-FPM
+  verloren, WordPress-Sites wurden seitdem nur noch statisch (und damit
+  kaputt) ausgeliefert.
+- Neu: Caddy leitet PHP-Requests jetzt direkt per `php_fastcgi` an einen
+  **eigenen, ressourcenschonenden PHP-FPM-Pool pro WordPress-Site** weiter
+  (`pm=ondemand` - 0 MB RAM für nicht besuchte Sites). Kein nginx mehr im
+  Container nötig, dadurch ein laufender Prozess weniger.
+- Details siehe DOCS.md, Abschnitt "PHP-Hosting (WordPress)".
+
 ## 0.1.14
 
 - Fix: Regex-Pattern der Name-Eingabefelder (`[a-z0-9-]`) war ungültiges
