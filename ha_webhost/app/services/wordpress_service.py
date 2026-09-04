@@ -1,4 +1,3 @@
-import hashlib
 import io
 import logging
 import shutil
@@ -154,136 +153,37 @@ require_once( ABSPATH . 'wp-settings.php' );
     logger.info(f"wp-config.php erstellt in {config_path}")
 
 
-def setup_wordpress_database(db_name: str, db_user: str, db_password: str, site_url: str) -> None:
-    """Erstellt WordPress-Tabellen und Basis-Konfiguration."""
-    logger.info(f"Richte WordPress-Datenbank '{db_name}' ein...")
+def wp_cli_install(
+    site_dir: Path, site_url: str, blog_name: str, admin_user: str, admin_password: str, admin_email: str
+) -> None:
+    """Installiert WordPress ueber wp-cli ('wp core install') statt handgeschriebenem
+    SQL: legt das vollstaendige Standard-Datenbankschema an (alle Kern-Tabellen,
+    z.B. auch wp_comments/wp_terms/wp_term_taxonomy, die die vorherige
+    Kurzfassung komplett ausgelassen hat), setzt saemtliche Standard-Optionen
+    (u.a. blog_charset/html_type - deren Fehlen zu einem kaputten, leeren
+    Content-Type-Header fuehrte, siehe CHANGELOG) und hasht das Admin-Passwort
+    mit WordPress' eigenem phpass statt einem nicht kompatiblen eigenen
+    MD5-Schema, mit dem sich vorher nicht einloggen liess."""
+    logger.info(f"Fuehre 'wp core install' fuer '{site_dir.name}' aus...")
 
-    # WordPress SQL Schema – vereinfacht (wp_users, wp_posts, wp_postmeta, wp_options)
-    setup_sql = f"""
-CREATE TABLE IF NOT EXISTS `{db_name}`.`wp_users` (
-    `ID` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-    `user_login` varchar(60) NOT NULL DEFAULT '',
-    `user_pass` varchar(255) NOT NULL DEFAULT '',
-    `user_email` varchar(100) NOT NULL DEFAULT '',
-    `user_registered` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
-    `display_name` varchar(250) NOT NULL DEFAULT '',
-    PRIMARY KEY (`ID`),
-    UNIQUE KEY `user_login` (`user_login`),
-    KEY `user_email` (`user_email`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `{db_name}`.`wp_posts` (
-    `ID` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-    `post_author` bigint(20) unsigned NOT NULL DEFAULT '0',
-    `post_date` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
-    `post_content` longtext NOT NULL,
-    `post_title` text NOT NULL,
-    `post_name` varchar(200) NOT NULL DEFAULT '',
-    `post_status` varchar(20) NOT NULL DEFAULT 'publish',
-    `post_type` varchar(20) NOT NULL DEFAULT 'post',
-    PRIMARY KEY (`ID`),
-    KEY `post_name` (`post_name`(191)),
-    KEY `post_status` (`post_status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `{db_name}`.`wp_postmeta` (
-    `meta_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-    `post_id` bigint(20) unsigned NOT NULL DEFAULT '0',
-    `meta_key` varchar(255) DEFAULT NULL,
-    `meta_value` longtext,
-    PRIMARY KEY (`meta_id`),
-    KEY `post_id` (`post_id`),
-    KEY `meta_key` (`meta_key`(191))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `{db_name}`.`wp_usermeta` (
-    `umeta_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-    `user_id` bigint(20) unsigned NOT NULL DEFAULT '0',
-    `meta_key` varchar(255) DEFAULT NULL,
-    `meta_value` longtext,
-    PRIMARY KEY (`umeta_id`),
-    KEY `user_id` (`user_id`),
-    KEY `meta_key` (`meta_key`(191))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `{db_name}`.`wp_options` (
-    `option_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-    `option_name` varchar(255) NOT NULL DEFAULT '',
-    `option_value` longtext NOT NULL,
-    PRIMARY KEY (`option_id`),
-    UNIQUE KEY `option_name` (`option_name`(191))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Basis-Optionen für WordPress
-INSERT INTO `{db_name}`.`wp_options` (`option_name`, `option_value`) VALUES
-    ('siteurl', '{site_url}'),
-    ('home', '{site_url}'),
-    ('admin_email', 'admin@example.com'),
-    ('blogname', 'WordPress Site'),
-    ('blogdescription', ''),
-    ('date_format', 'F j, Y'),
-    ('time_format', 'g:i a');
-"""
-
-    try:
-        result = subprocess.run(
-            ["mysql", "-u", "root"],
-            input=setup_sql.encode(),
-            capture_output=True,
-            timeout=30
-        )
-        if result.returncode != 0:
-            raise RuntimeError(f"MySQL-Fehler: {result.stderr.decode()}")
-        logger.info(f"WordPress-Tabellen in '{db_name}' erstellt.")
-    except Exception as e:
-        logger.error(f"Fehler beim Setup der DB: {e}")
-        raise
-
-
-def create_wordpress_admin(db_name: str, admin_user: str, admin_password: str, admin_email: str) -> None:
-    """Erstellt einen Admin-Benutzer in der WordPress-Datenbank."""
-    logger.info(f"Erstelle WordPress-Admin '{admin_user}'...")
-
-    # WordPress nutzt phpass für Passwort-Hashing (vereinfacht hier mit MD5 + Salt)
-    # Für echten Produktivbetrieb sollte man eine echte phpass-Library nutzen
-    # Aber für Test/Setup reicht ein einfaches Schema
-    salt = hashlib.md5(f"{admin_user}{admin_email}".encode()).hexdigest()[:8]
-    # Vereinfachtes Hashing (real WordPress nutzt phpass, aber das geht auch)
-    hashed_password = hashlib.md5(f"{salt}{admin_password}".encode()).hexdigest()
-
-    create_user_sql = f"""
-INSERT INTO `{db_name}`.`wp_users` (
-    `user_login`, `user_pass`, `user_email`, `user_registered`, `display_name`
-) VALUES (
-    '{admin_user}',
-    '{hashed_password}',
-    '{admin_email}',
-    NOW(),
-    '{admin_user}'
-) ON DUPLICATE KEY UPDATE
-    `user_pass` = '{hashed_password}',
-    `user_email` = '{admin_email}';
-
--- Gib dem User Admin-Rolle
-INSERT INTO `{db_name}`.`wp_usermeta` (`user_id`, `meta_key`, `meta_value`)
-SELECT ID, '{db_name}_capabilities', 'a:1{{s:13:"administrator";b:1;}}'
-FROM `{db_name}`.`wp_users` WHERE `user_login` = '{admin_user}'
-ON DUPLICATE KEY UPDATE `meta_value` = 'a:1{{s:13:"administrator";b:1;}}';
-"""
-
-    try:
-        result = subprocess.run(
-            ["mysql", "-u", "root"],
-            input=create_user_sql.encode(),
-            capture_output=True,
-            timeout=10
-        )
-        if result.returncode != 0:
-            logger.warning(f"Fehler beim Erstellen des Admin-Users: {result.stderr.decode()}")
-        else:
-            logger.info(f"Admin-User '{admin_user}' erstellt.")
-    except Exception as e:
-        logger.warning(f"Fehler beim Erstellen des Admin-Users: {e}")
+    result = subprocess.run(
+        [
+            "wp", "core", "install",
+            f"--url={site_url}",
+            f"--title={blog_name}",
+            f"--admin_user={admin_user}",
+            f"--admin_password={admin_password}",
+            f"--admin_email={admin_email}",
+            "--skip-email",
+            "--allow-root",
+        ],
+        cwd=site_dir,
+        capture_output=True,
+        timeout=60,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"wp core install fehlgeschlagen: {result.stderr.decode().strip()}")
+    logger.info(f"WordPress-Installation fuer '{site_dir.name}' abgeschlossen.")
 
 
 def delete_wordpress_database(db_name: str, db_user: str) -> None:
@@ -311,8 +211,18 @@ FLUSH PRIVILEGES;
         logger.warning(f"Fehler beim Löschen der DB/User: {e}")
 
 
-def init_wordpress_site(site_dir: Path, site_name: str, db_name: str, db_user: str, db_password: str, site_url: str = None, admin_password: str = None, admin_email: str = "admin@example.com") -> None:
-    """Komplette WordPress-Initialisierung: Download, Entpacken, DB, Config, Tabellen, Admin."""
+def init_wordpress_site(
+    site_dir: Path,
+    site_name: str,
+    db_name: str,
+    db_user: str,
+    db_password: str,
+    site_url: str = None,
+    admin_password: str = None,
+    admin_email: str = "admin@example.com",
+    blog_name: str = "WordPress Site",
+) -> None:
+    """Komplette WordPress-Initialisierung: Download, Entpacken, DB, Config, Installation."""
     logger.info(f"Initialisiere WordPress-Site '{site_name}'...")
 
     if site_url is None:
@@ -332,10 +242,7 @@ def init_wordpress_site(site_dir: Path, site_name: str, db_name: str, db_user: s
     # 4. wp-config.php generieren
     generate_wp_config(db_name, db_user, db_password, site_name, site_dir, site_url)
 
-    # 5. WordPress-Datenbank-Schema erstellen
-    setup_wordpress_database(db_name, db_user, db_password, site_url)
-
-    # 6. Admin-User erstellen
-    create_wordpress_admin(db_name, "admin", admin_password, admin_email)
+    # 5. WordPress installieren (Schema + Standard-Optionen + Admin-User, siehe wp_cli_install)
+    wp_cli_install(site_dir, site_url, blog_name, "admin", admin_password, admin_email)
 
     logger.info(f"WordPress-Site '{site_name}' erfolgreich initialisiert.")

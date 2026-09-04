@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.1.18
+
+- **Fix: WordPress-Datenbank-Setup war unvollständig (eigenständiger,
+  bisher verdeckter Bug).** Seit PHP jetzt tatsächlich ausgeführt wird
+  (0.1.15-0.1.17), kam zum Vorschein: Das bisherige, handgeschriebene
+  SQL-Setup legte nur 4 der ~12 WordPress-Kern-Tabellen an und nur eine
+  Handvoll der von WordPress erwarteten Standard-Optionen. Fehlende
+  Optionen `blog_charset`/`html_type` führten zu einem leeren, kaputten
+  `Content-Type`-Header (`; charset=` statt `text/html; charset=UTF-8`) -
+  Browser hätten WordPress-Seiten als Datei-Download statt als Webseite
+  behandelt. Zusätzlich nutzte die Admin-Erstellung eigenes,
+  WordPress-inkompatibles MD5-Passwort-Hashing statt echtem phpass - der
+  Admin-Login hätte nicht funktioniert.
+- Fix: WordPress wird jetzt über echtes `wp core install` (wp-cli, bereits
+  im Container vorhanden) eingerichtet statt über Hand-SQL - legt das
+  vollständige Standardschema und alle Standard-Optionen korrekt an,
+  Admin-Passwort wird mit WordPress' eigenem Hashing gespeichert.
+- Fix: Der beim Anlegen einer WordPress-Site eingegebene Blog-Name wurde
+  bisher beim eigentlichen Setup ignoriert (immer "WordPress Site") - wird
+  jetzt korrekt übernommen.
+
 ## 0.1.17
 
 - **Fix: PHP-FPM startete seit 0.1.16 gar nicht mehr** ("unknown entry

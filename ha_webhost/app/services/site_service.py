@@ -175,7 +175,8 @@ def create_wordpress_site(
             site_dir, name, db_name, db_user, db_password,
             site_url=site_url,
             admin_password=admin_password,
-            admin_email=admin_email
+            admin_email=admin_email,
+            blog_name=blog_name
         )
         site.status = SiteStatus.active
         site.last_error = None
