@@ -8,7 +8,15 @@ from core import crypto
 from core.config import SITES_DIR
 from core.security import validate_site_name
 from models.site import Site, SiteStatus, SourceType
-from services import caddy_service, gallery_service, git_service, php_fpm_service, wordpress_service, zip_service
+from services import (
+    caddy_service,
+    gallery_service,
+    git_service,
+    php_fpm_service,
+    python_app_service,
+    wordpress_service,
+    zip_service,
+)
 
 
 def list_sites(session: Session) -> list[Site]:
@@ -29,9 +37,16 @@ def sync_proxy(session: Session) -> None:
     active_sites = [s for s in list_sites(session) if s.status == SiteStatus.active]
     names = [s.name for s in active_sites]
     php_names = [s.name for s in active_sites if s.source_type in PHP_SOURCE_TYPES]
+    python_sites = [s for s in active_sites if s.source_type == SourceType.python]
+    python_ports = {s.name: python_app_service.app_port(s.id) for s in python_sites}
 
     php_fpm_service.sync_pools(php_names)
-    caddy_service.write_and_reload(names, php_names)
+    caddy_service.write_and_reload(names, php_names, python_ports)
+
+    python_app_service.ensure_running(
+        [(s.name, SITES_DIR / s.name, python_ports[s.name]) for s in python_sites]
+    )
+    python_app_service.stop_orphaned(set(python_ports.keys()))
 
 
 def create_site_from_upload(
@@ -59,6 +74,57 @@ def create_site_from_upload(
 
     try:
         zip_service.deploy_zip_upload(upload_bytes, SITES_DIR / name)
+        site.status = SiteStatus.active
+        site.last_error = None
+    except Exception as exc:
+        site.status = SiteStatus.failed
+        site.last_error = str(exc)
+        raise
+    finally:
+        site.updated_at = datetime.now(timezone.utc)
+        site.last_deploy_at = datetime.now(timezone.utc)
+        session.add(site)
+        session.commit()
+        sync_proxy(session)
+
+    return site
+
+
+def create_site_from_python_upload(session: Session, name: str, upload_bytes: bytes) -> Site:
+    """Legt eine neue Python-App-Site an oder aktualisiert eine bestehende
+    (erneutes Hochladen unter demselben Namen = Redeploy: laufender Prozess
+    wird gestoppt, Dateien + Abhängigkeiten ersetzt, Prozess über
+    sync_proxy()/ensure_running() neu gestartet).
+
+    Die App braucht eine main.py im ZIP-Root, die selbst per HTTP auf
+    0.0.0.0:$PORT lauscht (Umgebungsvariable PORT wird gesetzt) - passt zu
+    den meisten Flask-/FastAPI-Quickstarts. Optionale requirements.txt wird
+    automatisch installiert (siehe services/python_app_service.py)."""
+    name = validate_site_name(name)
+    site = get_site(session, name)
+    if site and site.source_type != SourceType.python:
+        raise ValueError(
+            f"Site '{name}' existiert bereits mit Quelle '{site.source_type.value}'."
+        )
+
+    if site:
+        python_app_service.stop(name)  # laufenden Prozess vor Dateiaustausch stoppen
+        site.status = SiteStatus.deploying
+    else:
+        site = Site(name=name, source_type=SourceType.python, status=SiteStatus.deploying)
+    session.add(site)
+    session.commit()
+    session.refresh(site)
+
+    try:
+        site_dir = SITES_DIR / name
+        zip_service.deploy_zip_upload(upload_bytes, site_dir)
+        if not (site_dir / "main.py").exists():
+            raise RuntimeError(
+                "main.py nicht gefunden - wird als Einstiegspunkt benötigt "
+                "(muss auf 0.0.0.0:$PORT lauschen)."
+            )
+        python_app_service.setup_dependencies(site_dir)
         site.status = SiteStatus.active
         site.last_error = None
     except Exception as exc:
@@ -267,6 +333,9 @@ def delete_site(session: Session, name: str) -> None:
             # Nicht fatal – Dateien trotzdem löschen
             import logging
             logging.getLogger(__name__).error(f"Fehler beim Löschen der WordPress-DB: {e}")
+
+    if site.source_type == SourceType.python:
+        python_app_service.stop(name)
 
     site_dir = SITES_DIR / name
     if site_dir.exists():

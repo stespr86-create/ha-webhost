@@ -103,6 +103,33 @@
 		</section>
 
 		<section class="card">
+			<h2>Neue Site: Python-App</h2>
+			<form id="python-upload-form">
+				<label>Name (a-z, 0-9, -)
+					<input type="text" name="name" required pattern="[a-z0-9][a-z0-9\-]{1,30}[a-z0-9]" />
+				</label>
+				<label>ZIP-Datei
+					<input type="file" name="file" accept=".zip" required />
+				</label>
+				<button type="submit">Hochladen &amp; deployen</button>
+			</form>
+			<p class="hint">
+				ZIP muss eine <code>main.py</code> im Root enthalten, die selbst
+				per HTTP auf <code>0.0.0.0:$PORT</code> lauscht (Umgebungsvariable
+				<code>PORT</code> wird gesetzt) - z.B. Flask:
+				<code>app.run(host='0.0.0.0', port=int(os.environ['PORT']))</code>,
+				FastAPI: <code>uvicorn.run(app, host='0.0.0.0',
+				port=int(os.environ['PORT']))</code>. Optionale
+				<code>requirements.txt</code> im Root wird automatisch
+				installiert. Läuft als eigener Prozess (kein Docker-Container),
+				kein Datenbank-Zugang out-of-the-box. Ein erneuter Upload unter
+				demselben Namen ersetzt Dateien + Abhängigkeiten und startet die
+				App neu (Update) – dafür gibt es auch den "🔄 Update"-Knopf in
+				der Sites-Tabelle.
+			</p>
+		</section>
+
+		<section class="card">
 			<h2>Neue Site: Fotogalerie</h2>
 			<form id="gallery-form">
 				<label>Name (a-z, 0-9, -)

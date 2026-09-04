@@ -11,6 +11,7 @@ class SourceType(str, Enum):
     gallery = "gallery"
     wordpress = "wordpress"
     php = "php"
+    python = "python"
 
 
 class SiteStatus(str, Enum):

@@ -1,6 +1,6 @@
 import logging
 import subprocess
-from typing import Iterable
+from typing import Iterable, Mapping, Optional
 
 from core.config import (
     BACKEND_INTERNAL_PORT,
@@ -97,6 +97,17 @@ SITE_BLOCK_PHP = """\
 
 """
 
+# Python-App-Sites - kein Docker-Container, sondern ein eigener, ueberwachter
+# Prozess pro Site auf einem lokalen Port (siehe services/python_app_service.py).
+# Kein "root"/file_server noetig: die App entscheidet selbst, was sie
+# ausliefert, Caddy reicht den kompletten Request einfach durch.
+SITE_BLOCK_PYTHON = """\
+\t\thandle_path /sites/{name}/* {{
+\t\t\treverse_proxy 127.0.0.1:{port}
+\t\t}}
+
+"""
+
 # Galerie-Sites brauchen einen kleinen Backend-Endpunkt fuer
 # Foto-Upload/-Liste (services/gallery_service.py), auch auf dem
 # OEFFENTLICHEN Port - Gaeste haben keinen HA-Login. Bewusst nur dieser
@@ -115,14 +126,21 @@ API_PROXY_BLOCK = """\
 """
 
 
-def render_caddyfile(site_names: Iterable[str], php_site_names: Iterable[str] = ()) -> str:
+def render_caddyfile(
+    site_names: Iterable[str],
+    php_site_names: Iterable[str] = (),
+    python_site_ports: Optional[Mapping[str, int]] = None,
+) -> str:
     names = sorted(site_names)
     php_names = set(php_site_names)
+    python_site_ports = python_site_ports or {}
 
     def block_for(name: str) -> str:
         root = str(SITES_DIR / name)
         if name in php_names:
             return SITE_BLOCK_PHP.format(name=name, root=root, socket=php_fpm_service.socket_path(name))
+        if name in python_site_ports:
+            return SITE_BLOCK_PYTHON.format(name=name, port=python_site_ports[name])
         return SITE_BLOCK.format(name=name, root=root)
 
     site_blocks = "".join(block_for(name) for name in names)
@@ -140,7 +158,11 @@ def render_caddyfile(site_names: Iterable[str], php_site_names: Iterable[str] = 
     return GLOBAL_OPTS + ingress_block + "\n" + public_block
 
 
-def write_and_reload(site_names: Iterable[str], php_site_names: Iterable[str] = ()) -> None:
+def write_and_reload(
+    site_names: Iterable[str],
+    php_site_names: Iterable[str] = (),
+    python_site_ports: Optional[Mapping[str, int]] = None,
+) -> None:
     """Schreibt die Caddyfile und stößt einen Reload an.
 
     Ein fehlgeschlagener Reload (Caddy nicht erreichbar, Binary fehlt) darf
@@ -148,7 +170,7 @@ def write_and_reload(site_names: Iterable[str], php_site_names: Iterable[str] = 
     bereits korrekt auf der Platte, nur der Proxy hinkt dann bis zum
     nächsten erfolgreichen Reload hinterher.
     """
-    CADDY_CONFIG_PATH.write_text(render_caddyfile(site_names, php_site_names))
+    CADDY_CONFIG_PATH.write_text(render_caddyfile(site_names, php_site_names, python_site_ports))
 
     try:
         result = subprocess.run(

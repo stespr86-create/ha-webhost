@@ -1,13 +1,24 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
+# build-base/python3-dev/jpeg-dev/zlib-dev bleiben bewusst dauerhaft
+# installiert (nicht nur fuer den eigenen Backend-Build) - Python-App-Sites
+# (services/python_app_service.py) installieren ihre eigene requirements.txt
+# zur Laufzeit per pip; ohne Build-Tools wuerden Pakete mit C-Extensions
+# ohne fertiges Wheel fuer die Ziel-Architektur (v.a. armv7) fehlschlagen.
+# Kostet Image-Groesse, nicht aber Laufzeit-RAM (nur ungenutzte Dateien auf
+# der Platte) - im Sinne von "robust fuer echte Nutzer" in Kauf genommen.
 RUN apk add --no-cache \
         python3 \
+        python3-dev \
         py3-pip \
+        build-base \
         caddy \
         git \
         jpeg \
+        jpeg-dev \
         zlib \
+        zlib-dev \
         mariadb \
         mariadb-client \
         php82 \
@@ -56,16 +67,7 @@ RUN rm -f /etc/php82/php-fpm.d/www.conf \
 WORKDIR /app
 
 COPY app/requirements.txt /app/requirements.txt
-# jpeg-dev/zlib-dev/build-base nur fuer den Pillow-Build gebraucht (falls fuer
-# die Ziel-Architektur kein fertiges Wheel existiert) - direkt danach wieder
-# entfernt, die Laufzeit-Libs (jpeg/zlib oben) bleiben erhalten.
-RUN apk add --no-cache --virtual .build-deps \
-        build-base \
-        python3-dev \
-        jpeg-dev \
-        zlib-dev \
-    && pip3 install --no-cache-dir --break-system-packages -r /app/requirements.txt \
-    && apk del .build-deps
+RUN pip3 install --no-cache-dir --break-system-packages -r /app/requirements.txt
 
 COPY app /app
 COPY rootfs /

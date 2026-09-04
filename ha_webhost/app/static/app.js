@@ -61,7 +61,7 @@ async function loadSites() {
 					<td>
 						<button data-action="files" data-name="${site.name}">📂 Dateien</button>
 						${site.source_type === "git" ? `<button data-action="redeploy" data-name="${site.name}">Redeploy</button>` : ""}
-						${site.source_type === "upload" || site.source_type === "php" ? `<button data-action="redeploy-upload" data-name="${site.name}" data-source-type="${site.source_type}">🔄 Update</button>` : ""}
+						${["upload", "php", "python"].includes(site.source_type) ? `<button data-action="redeploy-upload" data-name="${site.name}" data-source-type="${site.source_type}">🔄 Update</button>` : ""}
 						${site.source_type === "gallery" ? `<button data-action="refresh-gallery" data-name="${site.name}" title="Holt die neueste Galerie-Oberfläche - Fotos bleiben erhalten">🔄 Seite aktualisieren</button>` : ""}
 						<button data-action="delete" data-name="${site.name}" class="danger">Löschen</button>
 					</td>
@@ -120,7 +120,8 @@ sitesBody.addEventListener("click", async (event) => {
 
 	if (action === "redeploy-upload") {
 		redeployUploadTarget = name;
-		redeployUploadEndpoint = button.dataset.sourceType === "php" ? "api/sites/php-upload" : "api/sites/upload";
+		const endpoints = { php: "api/sites/php-upload", python: "api/sites/python-upload" };
+		redeployUploadEndpoint = endpoints[button.dataset.sourceType] || "api/sites/upload";
 		redeployUploadInput.click();
 	}
 });
@@ -175,6 +176,22 @@ document.getElementById("php-upload-form").addEventListener("submit", async (eve
 	const res = await fetch("api/sites/php-upload", { method: "POST", body: formData });
 	if (res.ok) {
 		showStatus(`PHP-Site "${formData.get("name")}" erfolgreich deployt.`);
+		form.reset();
+		loadSites();
+	} else {
+		const err = await res.json();
+		showStatus(`Fehler: ${err.detail}`, true);
+	}
+});
+
+document.getElementById("python-upload-form").addEventListener("submit", async (event) => {
+	event.preventDefault();
+	const form = event.target;
+	const formData = new FormData(form);
+
+	const res = await fetch("api/sites/python-upload", { method: "POST", body: formData });
+	if (res.ok) {
+		showStatus(`Python-App "${formData.get("name")}" erfolgreich deployt.`);
 		form.reset();
 		loadSites();
 	} else {

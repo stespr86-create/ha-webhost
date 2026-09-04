@@ -22,12 +22,17 @@ im HA-Ingress-Panel.
 - PHP-Upload-Sites: eigene/beliebige PHP-Apps per ZIP hochladen (wie
   ZIP-Upload, aber `.php`-Dateien werden tatsächlich ausgeführt, gleicher
   PHP-FPM-Pool-Mechanismus wie bei WordPress) - ohne eigene
-  Datenbank-Provisionierung, siehe Roadmap Phase 2
+  Datenbank-Provisionierung
+- Python-Upload-Sites: eigene/beliebige Python-Apps (Flask/FastAPI/beliebig)
+  per ZIP hochladen, eigener überwachter Prozess pro Site (kein
+  Docker-Container) - siehe Abschnitt "Python-Hosting" unten
 - Redeploy per Knopfdruck (git pull bei Git-Sites, erneuter ZIP-Upload
-  unter demselben Namen bei Upload-/PHP-Upload-Sites – "🔄 Update"-Button)
+  unter demselben Namen bei Upload-/PHP-Upload-/Python-Upload-Sites –
+  "🔄 Update"-Button)
 - Einfacher Datei-Browser/-Editor über die API (`/api/files/...`)
 - Manuelles Backup aller Sites als ein ZIP-Download ("📦 Alle Sites
-  sichern"-Button im Panel, `.git`-Verzeichnisse werden ausgeschlossen)
+  sichern"-Button im Panel, `.git`-/`.deps`-Verzeichnisse werden
+  ausgeschlossen)
 - Zwei getrennte Zugriffswege: Port 8000 (Ingress, Admin-UI + API + Sites,
   HA-Login nötig) und Port 8090 (**nur** `/sites/<name>/*`, kein
   Admin-Zugriff - für öffentliche Freigabe gedacht, siehe unten)
@@ -37,7 +42,6 @@ im HA-Ingress-Panel.
 
 ### Bewusst NICHT enthalten (siehe Roadmap)
 
-- Python-Hosting mit eigenem Laufzeit-Container pro App
 - Datenbank-Verwaltung für eigene/generische Apps (MariaDB/PostgreSQL) -
   WordPress-Datenbanken werden automatisch verwaltet, das ist unabhängig
   davon
@@ -82,11 +86,62 @@ Unix-Socket unter `/run/php-fpm/<name>.sock`, `services/php_fpm_service.py`):
   dem DB-Stand neu erzeugt (`site_service.sync_proxy()`) - PHP-FPM liest sie
   per `SIGUSR2` neu ein (graceful reload, laufende Requests werden nicht
   abgebrochen).
-- **Bekannte Einschränkung:** Nur der Site-Typ `wordpress` bekommt aktuell
-  einen PHP-FPM-Pool zugewiesen. Ein eigener Upload eines beliebigen
-  PHP-Skripts (z.B. über den Site-Typ "ZIP-Upload") wird weiterhin nur
-  statisch ausgeliefert (PHP-Quelltext würde als Text/Download ausgeliefert,
-  nicht ausgeführt) - siehe Roadmap Phase 2 für generisches PHP-Hosting.
+- **Site-Typen mit PHP-FPM-Pool:** `wordpress` und `php` (Site-Typ
+  "PHP-Upload", seit v0.1.21 - eigene/beliebige PHP-Apps per ZIP). Ein
+  Upload über den Site-Typ "ZIP-Upload" bleibt bewusst rein statisch
+  (PHP-Quelltext würde als Text/Download ausgeliefert, nicht ausgeführt) -
+  wer PHP-Ausführung braucht, nutzt "PHP-Upload" statt "ZIP-Upload".
+
+## Python-Hosting
+
+Site-Typ **"PHP-Upload"'s Pendant für Python** (seit v0.1.22): eigene/
+beliebige Python-Apps per ZIP hochladen, `POST /api/sites/python-upload`.
+
+**Voraussetzung:** Die ZIP muss eine `main.py` im Root enthalten, die
+selbst per HTTP auf `0.0.0.0:$PORT` lauscht (Umgebungsvariable `PORT` wird
+vom Add-on gesetzt) - Standard-Konvention, passt zu den meisten Flask-/
+FastAPI-Quickstarts (`app.run(host='0.0.0.0',
+port=int(os.environ['PORT']))` bzw. `uvicorn.run(app, host='0.0.0.0',
+port=int(os.environ['PORT']))`). Eine optionale `requirements.txt` im Root
+wird automatisch installiert.
+
+**Architektur** (`services/python_app_service.py`): Kein Docker-Container
+pro App (siehe Sicherheitshinweis oben) - stattdessen ein eigener,
+überwachter Betriebssystem-Prozess pro Site:
+
+- Abhängigkeiten werden per `pip install --target=<site>/.deps`
+  installiert (kein eigenes virtualenv - das venv-Stdlib-Modul ist auf
+  Alpine nicht zuverlässig garantiert vorhanden, `--target` braucht nur das
+  ohnehin vorhandene `pip3`) und zur Laufzeit per `PYTHONPATH`
+  eingebunden - dadurch pro Site isoliert, ohne einen kompletten
+  Stdlib-Klon je App.
+- Jede Site bekommt einen deterministischen, kollisionsfreien lokalen Port
+  (`9100 + Site-ID`), Caddy leitet Requests unter `/sites/<name>/*` per
+  `reverse_proxy` direkt dorthin.
+- Prozess-Überwachung: bei jedem App-Start und jedem Site-Create/-Delete
+  (`sync_proxy()`) wird geprüft, ob für jede aktive Python-Site ein Prozess
+  läuft - fehlende/abgestürzte Prozesse werden automatisch neu gestartet
+  (`ensure_running()`), verwaiste Prozesse gelöschter Sites gestoppt
+  (`stop_orphaned()`). Kein separater Cron/Watchdog nötig, da `sync_proxy()`
+  ohnehin bei jedem relevanten Ereignis läuft.
+- Build-Tools (`build-base`, `python3-dev`) bleiben im Container dauerhaft
+  installiert (nicht nur für den eigenen Backend-Build), damit `pip
+  install` auch Pakete mit C-Extensions kompilieren kann, für die es kein
+  fertiges Wheel für die Ziel-Architektur gibt (v.a. relevant auf armv7) -
+  kostet Image-Größe, nicht Laufzeit-RAM.
+
+**Bekannte Einschränkungen:**
+- Alle Python-Apps teilen sich dieselbe im Container installierte
+  Python-Version - keine App-spezifische Interpreter-Version wählbar.
+- Kein Datenbank-Zugang out-of-the-box (wie bei PHP-Upload) - eigene
+  Datenbank-Provisionierung pro App ist weiterhin Roadmap Phase 4.
+- Kein Log-Rotation für die App-eigene Log-Datei (`<site>/.app.log`,
+  sammelt stdout/stderr der App) - wächst über die Zeit unbegrenzt, bei
+  Bedarf manuell über den Datei-Manager leeren/löschen.
+- Geringere Isolation zwischen Apps als bei getrennten Containern (alle
+  Prozesse laufen im selben Betriebssystem-Namespace) - für kleine,
+  vertrauenswürdige Apps ein sinnvoller Kompromiss, kein Ersatz für
+  Multi-Tenant-Hosting mit nicht vertrauenswürdigem Code.
 
 ## Bekannte Einschränkung: Sub-Path-Routing
 
@@ -379,10 +434,19 @@ zurückgestellt.
      MariaDB verbinden (Zugangsdaten müsste man sich selbst einrichten,
      z.B. über die MariaDB-Kommandozeile im Container) - keine
      automatische Erstellung/Verwaltung wie bei WordPress.
-2. **Phase 3**: Python-App-Hosting (Flask/FastAPI/Django) – anders als PHP
-   nicht über ein einheitliches Pool-Modell abbildbar (unterschiedliche
-   Python-Versionen/Abhängigkeiten je App), daher weiterhin über je einen
-   eigenen Container pro App. Erfordert `docker_api: true` (siehe
-   Sicherheitshinweis oben).
+2. **Phase 3 - abgeschlossen seit v0.1.22, anders umgesetzt als ursprünglich
+   geplant**: Python-App-Hosting (Flask/FastAPI/Django/beliebiges `main.py`).
+   Ursprünglich hier vorgesehen: ein eigener Container pro App (mangels
+   einheitlichem Pool-Modell wie bei PHP, wegen unterschiedlicher
+   Python-Versionen/Abhängigkeiten je App), mit `docker_api: true`. Bewusst
+   **nicht** so umgesetzt (siehe Sicherheitshinweis oben) - stattdessen wie
+   bei PHP ein eigener, überwachter **Prozess** pro Site (kein Container,
+   kein Docker-Socket-Zugriff nötig). Siehe Abschnitt "Python-Hosting"
+   unten und `services/python_app_service.py`.
+   - Trade-off: alle Python-Apps teilen sich dieselbe im Container
+     installierte Python-Version; Abhängigkeiten werden trotzdem pro Site
+     isoliert (`pip install --target=.deps`, zur Laufzeit per `PYTHONPATH`
+     eingebunden - kein eigenes virtualenv, das venv-Stdlib-Modul ist auf
+     Alpine nicht zuverlässig garantiert vorhanden).
 3. **Phase 4**: MariaDB/PostgreSQL-Provisioning, automatische
    Backup-Zeitpläne, Monitoring (CPU/RAM/Storage pro App), Live-Log-Viewer.

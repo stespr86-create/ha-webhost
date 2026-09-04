@@ -27,10 +27,16 @@ def zip_directory(source_dir: Path, output_zip: Path) -> Path:
     return output_zip
 
 
+#: Verzeichnisnamen, die in Site-Backups nie mitgesichert werden: bei
+#: Redeploy/Update automatisch neu erzeugt (Git-Checkout bzw. pip install),
+#: unnoetiger Ballast im Backup - .git zusaetzlich potenziell mit
+#: Zugangsdaten im Remote-Verlauf, .deps kann je nach App sehr gross werden.
+BACKUP_EXCLUDED_DIRS = {".git", ".deps"}
+
+
 def zip_all_sites(site_names: list[str], sites_dir: Path, output_zip: Path) -> Path:
     """Packt alle Sites in ein gemeinsames Archiv, je Site in einem eigenen
-    Ordner. .git-Verzeichnisse werden ausgeschlossen (redeploybar per Git,
-    unnoetiger Ballast, und potenziell mit Zugangsdaten im Remote-Verlauf)."""
+    Ordner (siehe BACKUP_EXCLUDED_DIRS fuer ausgeschlossene Unterordner)."""
     with zipfile.ZipFile(output_zip, "w", zipfile.ZIP_DEFLATED) as zf:
         for name in site_names:
             site_dir = sites_dir / name
@@ -39,7 +45,7 @@ def zip_all_sites(site_names: list[str], sites_dir: Path, output_zip: Path) -> P
             for path in site_dir.rglob("*"):
                 if not path.is_file():
                     continue
-                if ".git" in path.relative_to(site_dir).parts:
+                if BACKUP_EXCLUDED_DIRS & set(path.relative_to(site_dir).parts):
                     continue
                 zf.write(path, Path(name) / path.relative_to(site_dir))
     return output_zip

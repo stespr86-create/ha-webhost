@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.22
+
+- Neu: Site-Typ **"Python-App"** - eigene/beliebige Python-Apps (Flask/
+  FastAPI/beliebig) per ZIP hochladen, `POST /api/sites/python-upload`.
+  Braucht eine `main.py`, die selbst auf `0.0.0.0:$PORT` lauscht;
+  optionale `requirements.txt` wird automatisch installiert.
+- Architektur bewusst **ohne** Docker-Socket-Zugriff (`docker_api`): jede
+  Python-Site läuft als eigener, überwachter Betriebssystem-Prozess statt
+  in einem eigenen Container - kein root-äquivalenter Zugriff auf den
+  Host. Abhängigkeiten werden per `pip install --target` pro Site isoliert
+  installiert (kein virtualenv nötig). Prozesse werden bei jedem
+  App-Start/Site-Create/-Delete automatisch überwacht und bei Bedarf
+  (neu) gestartet.
+- Build-Tools (`build-base`, `python3-dev`) sind jetzt dauerhaft im
+  Container installiert (vorher nur temporär für den eigenen
+  Backend-Build), damit `pip install` von Nutzer-Apps auch Pakete mit
+  C-Extensions kompilieren kann.
+- Details siehe DOCS.md, Abschnitt "Python-Hosting".
+
 ## 0.1.21
 
 - Neu: Site-Typ **"PHP-Upload"** - eigene/beliebige PHP-Apps per ZIP

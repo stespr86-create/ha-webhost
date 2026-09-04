@@ -17,6 +17,16 @@ PHP_FPM_POOL_DIR = DATA_DIR / "php-fpm-pools"
 PHP_FPM_SOCKET_DIR = Path("/run/php-fpm")
 PHP_FPM_PID_FILE = Path("/run/php-fpm.pid")
 
+# Python-App-Hosting: pro Site ein eigener, ueberwachter Prozess statt
+# Docker-Container - kein docker_api noetig, siehe services/python_app_service.py.
+# Abhaengigkeiten werden isoliert per PYTHONPATH installiert (kein venv - das
+# venv-Modul ist auf Alpine nicht zuverlaessig garantiert, "pip install
+# --target" braucht nur das ohnehin vorhandene pip3). Jede Site bekommt einen
+# deterministischen, kollisionsfreien Port (BASE_PORT + Site-ID), Caddy
+# reverse_proxy't direkt dorthin.
+PYTHON_APP_BASE_PORT = 9100
+PYTHON_APP_PID_DIR = Path("/run/python-apps")
+
 BACKEND_INTERNAL_PORT = 8001
 CADDY_INGRESS_PORT = 8000
 

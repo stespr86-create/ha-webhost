@@ -101,6 +101,34 @@ async def deploy_php_upload(
         raise HTTPException(409, str(exc)) from exc
 
 
+@router.post("/python-upload", response_model=SitePublic)
+async def deploy_python_upload(
+    name: str = Form(...),
+    file: UploadFile = File(...),
+    session: Session = Depends(get_session),
+):
+    """Python-App per ZIP hochladen - braucht eine main.py, die selbst per
+    HTTP auf 0.0.0.0:$PORT lauscht (Umgebungsvariable PORT wird gesetzt).
+    Eigener, überwachter Prozess pro Site statt Docker-Container - kein
+    docker_api nötig (siehe services/python_app_service.py). Kein
+    Datenbank-Zugang out-of-the-box."""
+    if not file.filename.lower().endswith(".zip"):
+        raise HTTPException(400, "Nur ZIP-Dateien werden unterstützt.")
+
+    content = await file.read(MAX_UPLOAD_BYTES + 1)
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise HTTPException(413, "Datei zu groß (max. 200 MB).")
+
+    try:
+        return site_service.create_site_from_python_upload(session, name, content)
+    except (InvalidSiteName, PathTraversal, UnsafeArchive) as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(422, f"Python-App-Installation fehlgeschlagen: {str(exc)}") from exc
+
+
 @router.post("/git", status_code=201, response_model=SitePublic)
 def deploy_git(
     name: str = Form(...),

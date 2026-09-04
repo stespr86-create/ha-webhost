@@ -4,6 +4,7 @@ mkdir -p /data/sites
 mkdir -p /data/mariadb
 mkdir -p /data/php-fpm-pools
 mkdir -p /run/php-fpm
+mkdir -p /run/python-apps
 
 # PHP-FPM verweigert den Start komplett, wenn der ueber include= eingebundene
 # Pool-Ordner leer ist ("No pool defined") - das trifft beim allerersten
