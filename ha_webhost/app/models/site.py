@@ -10,6 +10,7 @@ class SourceType(str, Enum):
     git = "git"
     gallery = "gallery"
     wordpress = "wordpress"
+    php = "php"
 
 
 class SiteStatus(str, Enum):

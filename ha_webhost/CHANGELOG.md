@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.21
+
+- Neu: Site-Typ **"PHP-Upload"** - eigene/beliebige PHP-Apps per ZIP
+  hochladen (wie "ZIP-Upload", aber `.php`-Dateien werden tatsächlich
+  ausgeführt, nutzt denselben PHP-FPM-Pool-Mechanismus wie WordPress-Sites).
+  Neuer Endpunkt `POST /api/sites/php-upload`, neues Formular im Panel,
+  "🔄 Update"-Knopf funktioniert auch für diesen Typ.
+- Bewusst (noch) ohne eigene Datenbank-Provisionierung pro App - siehe
+  DOCS.md, Roadmap Phase 2/4.
+
 ## 0.1.20
 
 - **Fix: Plugin-/Theme-Suche im Marketplace lieferte immer leere Ergebnisse**

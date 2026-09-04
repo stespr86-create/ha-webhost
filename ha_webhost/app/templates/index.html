@@ -81,6 +81,28 @@
 		</section>
 
 		<section class="card">
+			<h2>Neue Site: PHP-Upload</h2>
+			<form id="php-upload-form">
+				<label>Name (a-z, 0-9, -)
+					<input type="text" name="name" required pattern="[a-z0-9][a-z0-9\-]{1,30}[a-z0-9]" />
+				</label>
+				<label>ZIP-Datei
+					<input type="file" name="file" accept=".zip" required />
+				</label>
+				<button type="submit">Hochladen &amp; deployen</button>
+			</form>
+			<p class="hint">
+				Wie "ZIP-Upload", aber <code>.php</code>-Dateien werden tatsächlich
+				ausgeführt (eigener, ressourcenschonender PHP-FPM-Pool pro Site).
+				Für eigene/beliebige PHP-Apps ohne eigenen Datenbank-Zugang - falls
+				die App eine Datenbank braucht, aktuell nur manuell über die
+				bereits laufende MariaDB möglich. Ein erneuter Upload unter
+				demselben Namen ersetzt den Inhalt (Update) – dafür gibt es auch
+				den "🔄 Update"-Knopf in der Sites-Tabelle.
+			</p>
+		</section>
+
+		<section class="card">
 			<h2>Neue Site: Fotogalerie</h2>
 			<form id="gallery-form">
 				<label>Name (a-z, 0-9, -)

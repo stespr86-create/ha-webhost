@@ -19,27 +19,38 @@ def get_site(session: Session, name: str) -> Optional[Site]:
     return session.exec(select(Site).where(Site.name == name)).first()
 
 
+#: Site-Typen, deren .php-Dateien tatsaechlich ausgefuehrt werden sollen
+#: (eigener PHP-FPM-Pool pro Site, siehe services/php_fpm_service.py und
+#: caddy_service.SITE_BLOCK_PHP) statt nur statisch ausgeliefert zu werden.
+PHP_SOURCE_TYPES = (SourceType.wordpress, SourceType.php)
+
+
 def sync_proxy(session: Session) -> None:
     active_sites = [s for s in list_sites(session) if s.status == SiteStatus.active]
     names = [s.name for s in active_sites]
-    php_names = [s.name for s in active_sites if s.source_type == SourceType.wordpress]
+    php_names = [s.name for s in active_sites if s.source_type in PHP_SOURCE_TYPES]
 
     php_fpm_service.sync_pools(php_names)
     caddy_service.write_and_reload(names, php_names)
 
 
-def create_site_from_upload(session: Session, name: str, upload_bytes: bytes) -> Site:
-    """Legt eine neue Upload-Site an oder ersetzt den Inhalt einer
-    bestehenden (erneutes Hochladen unter demselben Namen = Redeploy)."""
+def create_site_from_upload(
+    session: Session, name: str, upload_bytes: bytes, source_type: SourceType = SourceType.upload
+) -> Site:
+    """Legt eine neue Upload- oder PHP-Site an oder ersetzt den Inhalt einer
+    bestehenden (erneutes Hochladen unter demselben Namen = Redeploy). Upload
+    und PHP-Upload unterscheiden sich nur darin, ob .php-Dateien ausgefuehrt
+    werden (siehe PHP_SOURCE_TYPES) - Deployment-Mechanik (ZIP entpacken) ist
+    identisch."""
     name = validate_site_name(name)
     site = get_site(session, name)
-    if site and site.source_type != SourceType.upload:
+    if site and site.source_type != source_type:
         raise ValueError(
             f"Site '{name}' existiert bereits mit Quelle '{site.source_type.value}'."
         )
 
     if not site:
-        site = Site(name=name, source_type=SourceType.upload, status=SiteStatus.deploying)
+        site = Site(name=name, source_type=source_type, status=SiteStatus.deploying)
     else:
         site.status = SiteStatus.deploying
     session.add(site)

@@ -75,6 +75,32 @@ async def deploy_upload(
         raise HTTPException(409, str(exc)) from exc
 
 
+@router.post("/php-upload", response_model=SitePublic)
+async def deploy_php_upload(
+    name: str = Form(...),
+    file: UploadFile = File(...),
+    session: Session = Depends(get_session),
+):
+    """Wie /upload, aber .php-Dateien werden tatsächlich ausgeführt (eigener
+    PHP-FPM-Pool pro Site, siehe services/php_fpm_service.py) statt nur
+    statisch ausgeliefert. Kein Datenbank-Zugang out-of-the-box - eigene
+    DB-Provisionierung für generische Apps ist noch nicht Teil dieses
+    Add-ons (siehe DOCS.md, Roadmap Phase 4)."""
+    if not file.filename.lower().endswith(".zip"):
+        raise HTTPException(400, "Nur ZIP-Dateien werden unterstützt.")
+
+    content = await file.read(MAX_UPLOAD_BYTES + 1)
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise HTTPException(413, "Datei zu groß (max. 200 MB).")
+
+    try:
+        return site_service.create_site_from_upload(session, name, content, source_type=SourceType.php)
+    except (InvalidSiteName, PathTraversal, UnsafeArchive) as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
 @router.post("/git", status_code=201, response_model=SitePublic)
 def deploy_git(
     name: str = Form(...),

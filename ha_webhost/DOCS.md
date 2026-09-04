@@ -19,8 +19,12 @@ im HA-Ingress-Panel.
   Updates, Backups, Health-Checks - eigene MariaDB-Datenbank pro Site, PHP
   läuft über einen **eigenen, ressourcenschonenden PHP-FPM-Pool pro Site**
   (siehe Abschnitt "PHP-Hosting (WordPress)" unten)
+- PHP-Upload-Sites: eigene/beliebige PHP-Apps per ZIP hochladen (wie
+  ZIP-Upload, aber `.php`-Dateien werden tatsächlich ausgeführt, gleicher
+  PHP-FPM-Pool-Mechanismus wie bei WordPress) - ohne eigene
+  Datenbank-Provisionierung, siehe Roadmap Phase 2
 - Redeploy per Knopfdruck (git pull bei Git-Sites, erneuter ZIP-Upload
-  unter demselben Namen bei Upload-Sites – "🔄 Update"-Button)
+  unter demselben Namen bei Upload-/PHP-Upload-Sites – "🔄 Update"-Button)
 - Einfacher Datei-Browser/-Editor über die API (`/api/files/...`)
 - Manuelles Backup aller Sites als ein ZIP-Download ("📦 Alle Sites
   sichern"-Button im Panel, `.git`-Verzeichnisse werden ausgeschlossen)
@@ -33,9 +37,6 @@ im HA-Ingress-Panel.
 
 ### Bewusst NICHT enthalten (siehe Roadmap)
 
-- Generisches PHP-Hosting für eigene/beliebige PHP-Apps (aktuell ist die
-  PHP-FPM-Pool-Verdrahtung nur an den Site-Typ "WordPress" gekoppelt, siehe
-  unten - kein eigener Site-Typ "PHP-Upload" bisher)
 - Python-Hosting mit eigenem Laufzeit-Container pro App
 - Datenbank-Verwaltung für eigene/generische Apps (MariaDB/PostgreSQL) -
   WordPress-Datenbanken werden automatisch verwaltet, das ist unabhängig
@@ -347,9 +348,9 @@ Technisch:
 Reihenfolge auf Wunsch angepasst: PHP-Hosting vorgezogen, Python-Hosting
 zurückgestellt.
 
-1. **Phase 2 (schlanke Variante) - Mechanismus seit v0.1.15 fürs
-   WordPress-Hosting umgesetzt, generischer Site-Typ steht noch aus**:
-   PHP-Hosting über einen **einzigen, geteilten PHP-FPM-Prozess** im
+1. **Phase 2 (schlanke Variante) - abgeschlossen seit v0.1.21** (Mechanismus
+   seit v0.1.15 fürs WordPress-Hosting, generischer Site-Typ "PHP-Upload"
+   seit v0.1.21): PHP-Hosting über einen **einzigen, geteilten PHP-FPM-Prozess** im
    Add-on-Container – läuft als weiterer Subprozess, analog zum bereits
    vorhandenen Caddy, statt eigener Container pro App. Jede PHP-Site
    bekommt einen eigenen FPM-**Pool** (eigenes RAM-Limit über
@@ -367,15 +368,17 @@ zurückgestellt.
      Container-Trennung – ein PHP-Interpreter mit mehreren Pools statt
      komplett getrennter Umgebungen. Für kleine, vertrauenswürdige Apps
      (eigene/Familien-/Vereinsprojekte) ein sinnvoller Kompromiss.
-   - **Was noch fehlt:** Ursprünglich war dieser Mechanismus nicht für
-     CMS-Systeme wie WordPress gedacht (wegen deren größerem
-     Wartungs-/Sicherheitsprofil, häufige CVEs), sondern für einen
-     generischen Site-Typ "eigene PHP-App hochladen" (z.B. via ZIP,
-     analog zum bestehenden "ZIP-Upload"-Typ, inkl. eigener
-     SQLite-/MariaDB-Datenbank pro App). WordPress wurde am Ende aber
-     zuerst angebunden, weil dafür schon ein fertiger Site-Typ mit
-     eigener DB-Provisionierung existierte. Der generische PHP-Upload-
-     Site-Typ selbst ist weiterhin offen.
+   - **Site-Typ "PHP-Upload"** (seit v0.1.21): ZIP hochladen wie bei
+     "ZIP-Upload", `.php`-Dateien werden aber tatsächlich ausgeführt
+     (eigener PHP-FPM-Pool, siehe oben). API: `POST /api/sites/php-upload`
+     (Formfelder `name` + `file`, wie `/api/sites/upload`).
+   - **Bewusst noch nicht enthalten:** Eigene Datenbank-Provisionierung pro
+     App (SQLite oder MariaDB) - das war ursprünglich Teil der Phase-2-Idee,
+     ist aber auf Phase 4 verschoben (siehe unten). Eine hochgeladene
+     PHP-App kann sich aktuell nur manuell mit der bereits laufenden
+     MariaDB verbinden (Zugangsdaten müsste man sich selbst einrichten,
+     z.B. über die MariaDB-Kommandozeile im Container) - keine
+     automatische Erstellung/Verwaltung wie bei WordPress.
 2. **Phase 3**: Python-App-Hosting (Flask/FastAPI/Django) – anders als PHP
    nicht über ein einheitliches Pool-Modell abbildbar (unterschiedliche
    Python-Versionen/Abhängigkeiten je App), daher weiterhin über je einen
