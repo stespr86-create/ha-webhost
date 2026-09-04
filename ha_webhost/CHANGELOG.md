@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.1.20
+
+- **Fix: Plugin-/Theme-Suche im Marketplace lieferte immer leere Ergebnisse**
+  (eigenständiger Bug, unabhängig von der wp-cli-Installation - reiner
+  Python-Code, kein wp-cli). Ursache: Die WordPress.org-APIs liefern/
+  erwarten kein JSON, sondern PHP's `serialize()`-Format - dieselbe Art,
+  wie WordPress selbst intern damit spricht. Der bisherige Code hat
+  `json.loads()` direkt auf diese Antwort losgelassen, was immer
+  fehlschlug (`Expecting value: line 1 column 1`). Zusätzlich fehlte das
+  korrekte Request-Format (Plugin-API will POST mit PHP-serialisiertem
+  `request`-Feld, Theme-API will GET mit demselben Feld als
+  Query-Parameter - liefert dafür aber echtes JSON zurück, jede API tickt
+  anders).
+- Neu: Kleiner, eigenständiger PHP-serialize/unserialize-Codec
+  (`services/php_serialize.py`, keine neue Abhängigkeit) - live gegen die
+  echte WordPress.org-API verifiziert (u.a. Yoast SEO, Rank Math SEO als
+  Suchtreffer für "seo").
+
 ## 0.1.19
 
 - **Fix: `wp core install` (0.1.18) schlug fehl** - "Class 'Phar' not

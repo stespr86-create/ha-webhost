@@ -2,9 +2,12 @@
 import json
 import logging
 import subprocess
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Optional
+
+from services import php_serialize
 
 logger = logging.getLogger(__name__)
 
@@ -18,19 +21,35 @@ class WordPressMarketplace:
 
     @staticmethod
     def search_plugins(query: str, limit: int = 10) -> list[dict]:
-        """Sucht Plugins auf WordPress.org Marketplace."""
+        """Sucht Plugins auf WordPress.org Marketplace.
+
+        Dieser Endpunkt nimmt nur POST-Requests an und liefert die Antwort im
+        PHP-serialize-Format (kein JSON) - exakt so, wie WordPress selbst
+        intern damit spricht (siehe services/php_serialize.py). Live gegen
+        die echte API verifiziert (u.a. mit "seo" -> Rank Math SEO)."""
         try:
-            url = f"{WordPressMarketplace.PLUGIN_API}?action=query_plugins&search={query}&per_page={limit}"
-            with urllib.request.urlopen(url, timeout=10) as response:
-                data = json.loads(response.read())
+            request_arg = php_serialize.dumps_request(
+                {"search": query, "per_page": limit, "page": 1}
+            )
+            body = urllib.parse.urlencode({
+                "action": "query_plugins",
+                "request": request_arg.decode("latin-1"),
+            }).encode("ascii")
+            req = urllib.request.Request(
+                WordPressMarketplace.PLUGIN_API,
+                data=body,
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+            with urllib.request.urlopen(req, timeout=10) as response:
+                data = php_serialize.loads(response.read())
                 plugins = []
                 if data.get("plugins"):
-                    for plugin in data["plugins"][:limit]:
+                    for plugin in list(data["plugins"].values())[:limit]:
                         plugins.append({
                             "slug": plugin.get("slug"),
                             "name": plugin.get("name"),
                             "version": plugin.get("version"),
-                            "description": plugin.get("short_description", "").strip()[:100],
+                            "description": (plugin.get("short_description") or "").strip()[:100],
                             "rating": plugin.get("rating", 0),
                             "active_installs": plugin.get("active_installs", 0),
                         })
@@ -41,9 +60,20 @@ class WordPressMarketplace:
 
     @staticmethod
     def search_themes(query: str, limit: int = 10) -> list[dict]:
-        """Sucht Themes auf WordPress.org Marketplace."""
+        """Sucht Themes auf WordPress.org Marketplace.
+
+        Anders als die Plugin-API (siehe oben): nimmt nur GET an, das 'request'
+        muss trotzdem PHP-serialisiert als Query-Parameter mitgegeben werden,
+        liefert dafuer aber echtes JSON zurueck. Live verifiziert."""
         try:
-            url = f"{WordPressMarketplace.THEME_API}?action=query_themes&search={query}&per_page={limit}"
+            request_arg = php_serialize.dumps_request(
+                {"search": query, "per_page": limit, "page": 1}
+            )
+            qs = urllib.parse.urlencode({
+                "action": "query_themes",
+                "request": request_arg.decode("latin-1"),
+            })
+            url = f"{WordPressMarketplace.THEME_API}?{qs}"
             with urllib.request.urlopen(url, timeout=10) as response:
                 data = json.loads(response.read())
                 themes = []
@@ -53,7 +83,7 @@ class WordPressMarketplace:
                             "slug": theme.get("slug"),
                             "name": theme.get("name"),
                             "version": theme.get("version"),
-                            "description": theme.get("description", "").strip()[:100],
+                            "description": (theme.get("description") or "").strip()[:100],
                             "rating": theme.get("rating", 0),
                             "active_installs": theme.get("active_installs", 0),
                         })
