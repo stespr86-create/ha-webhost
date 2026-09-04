@@ -130,6 +130,25 @@ if (
     $_SERVER['HTTPS'] = 'on';
 }}
 
+// Home-Assistant-Ingress-Praefix in REQUEST_URI einbauen - MUSS ebenfalls
+// vor require wp-settings.php stehen. HAs Supervisor entfernt den
+// Ingress-Token-Praefix (z.B. "/api/hassio_ingress/<token>") bereits vor
+// Weiterleitung an den Container; $_SERVER['REQUEST_URI'] enthaelt ihn hier
+// deshalb nie, sondern nur noch "/sites/{site_name}/...". HA sendet den
+// Praefix separat im Header X-Ingress-Path mit. Nicht nur unsere eigene
+// WP_HOME-Berechnung unten braucht das - WordPress-Core selbst baut an
+// mehreren Stellen eigene absolute Redirects direkt aus REQUEST_URI (u.a.
+// auth_redirect() fuer den Rueck-Redirect zu wp-admin NACH erfolgreichem
+// Login) statt ueber home_url(). Ohne diese Korrektur haette der
+// Login-Redirect selbst NACH dem WP_HOME-Fix weiterhin am Token vorbei auf
+// die nackte HA-Domain gezeigt - 404 einen Schritt spaeter, live
+// beobachtet. Indem REQUEST_URI hier VOR jeglicher WordPress-Logik
+// korrigiert wird, sind alle nachgelagerten Stellen automatisch korrekt,
+// nicht nur die uns bekannten.
+if ( ! empty( $_SERVER['HTTP_X_INGRESS_PATH'] ) && strpos( $_SERVER['REQUEST_URI'], $_SERVER['HTTP_X_INGRESS_PATH'] ) !== 0 ) {{
+    $_SERVER['REQUEST_URI'] = $_SERVER['HTTP_X_INGRESS_PATH'] . $_SERVER['REQUEST_URI'];
+}}
+
 // Datenbank-Konfiguration
 define( 'DB_NAME', '{db_name}' );
 define( 'DB_USER', '{db_user}' );

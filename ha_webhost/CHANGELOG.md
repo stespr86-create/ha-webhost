@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.33
+
+- **Fix: Login-Redirect landete NACH erfolgreichem WordPress-Login erneut
+  am Ingress-Token vorbei auf 404** - 0.1.32 behob nur den Sprung ZUR
+  Login-Seite; WordPress-Core baut den Rücksprung zu wp-admin nach dem
+  Login (`auth_redirect()`) direkt aus `REQUEST_URI`, nicht über
+  `home_url()`/`WP_SITEURL` - dort griff der 0.1.32-Fix also nicht.
+- Robusterer Fix: statt jede einzelne Stelle zu flicken, wird jetzt
+  `$_SERVER['REQUEST_URI']` selbst schon ganz am Anfang von
+  `wp-config.php` um den Ingress-Präfix ergänzt (aus `X-Ingress-Path`,
+  bevor WordPress überhaupt lädt) - dadurch sind automatisch auch alle
+  anderen (uns nicht bekannten) Stellen in WordPress-Core/Plugins korrekt,
+  die selbst absolute Redirects aus `REQUEST_URI` bauen.
+
 ## 0.1.32
 
 - **Fix: Absolute Redirects von PHP-/WordPress-Sites landeten hinter
