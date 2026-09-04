@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.25
+
+- **Fix: Redirect-Schleife auf `wp-login.php`/`wp-admin` hinter Tailscale
+  Funnel** - direkte Folge von 0.1.24, live beim Passwort-Zurücksetzen
+  entdeckt. Der 0.1.24-Fix hat nur eine eigene `$protocol`-Variable für die
+  `WP_HOME`-Berechnung korrigiert, aber `$_SERVER['HTTPS']` selbst nie
+  gesetzt - WordPress' eigene `is_ssl()`-Funktion (die `wp-login.php`/
+  `wp-admin` aktiv nutzen, um auf HTTPS zu bestehen) hielt jede Anfrage
+  deshalb weiterhin für unverschlüsselt, obwohl `WP_HOME` korrekt auf
+  `https://` zeigte - dieses Auseinanderklaffen erzeugte die Schleife.
+  Fix: `$_SERVER['HTTPS'] = 'on'` wird jetzt direkt gesetzt (ganz am
+  Anfang von wp-config.php, vor allem anderen), nicht nur eine eigene
+  Hilfsvariable - dadurch sieht WordPress-Core selbst die Anfrage korrekt
+  als sicher an.
+- Betrifft wie 0.1.24 nur neu angelegte Sites - bestehende Sites brauchen
+  die Korrektur einmalig manuell in wp-config.php nachgezogen.
+
 ## 0.1.24
 
 - **Fix: WordPress erzeugte über Tailscale Funnel `http://`-Links statt
