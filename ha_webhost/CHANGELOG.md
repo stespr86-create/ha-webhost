@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.16
+
+- **Fix: PHP-FPM-Boot-Crashloop seit 0.1.15.** PHP-FPM verweigert den Start
+  komplett, wenn sein Pool-Ordner keine einzige Config enthält ("No pool
+  defined") - das war beim Containerstart immer der Fall, solange noch
+  keine WordPress-Site existiert (die App schreibt die echten Pools erst
+  nach ihrem eigenen Start). Betraf jeden frischen Container-Boot ohne
+  WordPress-Sites, unabhängig davon ob man selbst WordPress nutzt.
+  Behoben mit einem harmlosen Platzhalter-Pool, der PHP-FPM immer
+  startfähig hält (nie von der Caddyfile referenziert, kein RAM-Verbrauch
+  dank `pm=ondemand`).
+
 ## 0.1.15
 
 - **Fix: WordPress-Sites waren nicht aufrufbar (404).** PHP wurde nie

@@ -5,6 +5,26 @@ mkdir -p /data/mariadb
 mkdir -p /data/php-fpm-pools
 mkdir -p /run/php-fpm
 
+# PHP-FPM verweigert den Start komplett, wenn der ueber include= eingebundene
+# Pool-Ordner leer ist ("No pool defined") - das trifft beim allerersten
+# Containerstart IMMER zu, da die App (die echte Pools aus dem DB-Stand
+# erzeugt, siehe services/php_fpm_service.py) erst nach php-fpm startet.
+# Ohne diesen Platzhalter wuerde php-fpm in eine Boot-Crashloop laufen, bis
+# die App zum ersten Mal durchgelaufen ist. Muss exakt mit
+# php_fpm_service.PLACEHOLDER_POOL_TEMPLATE uebereinstimmen.
+if [ ! -f /data/php-fpm-pools/_placeholder.conf ]; then
+    cat > /data/php-fpm-pools/_placeholder.conf <<'EOF'
+[_placeholder]
+user = nobody
+group = nobody
+listen = /run/php-fpm/_placeholder.sock
+listen.mode = 0666
+pm = ondemand
+pm.max_children = 1
+pm.process_idle_timeout = 60s
+EOF
+fi
+
 # MariaDB beim ersten Start initialisieren
 if [ ! -f /data/mariadb/initialized ]; then
     bashio::log.info "Initialisiere MariaDB zum ersten Mal..."

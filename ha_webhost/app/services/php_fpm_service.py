@@ -27,6 +27,26 @@ php_admin_value[upload_max_filesize] = 64M
 php_admin_value[post_max_size] = 64M
 """
 
+# PHP-FPM verweigert den Start komplett ("No pool defined"), wenn der per
+# include= eingebundene Ordner keine einzige Pool-Config enthaelt - das
+# passiert regelmaessig (z.B. direkt nach Erstinstallation ohne
+# WordPress-Sites, oder nach Loeschen der letzten WordPress-Site) und fuehrt
+# sonst zu einer Boot-Crashloop. Dieser Platzhalter-Pool (Unterstrich im
+# Namen - fuer echte Sites durch SITE_NAME_PATTERN ausgeschlossen, keine
+# Kollision moeglich) haelt PHP-FPM permanent startfaehig, wird aber nie von
+# der Caddyfile referenziert und bekommt dank pm=ondemand nie einen Worker.
+PLACEHOLDER_POOL_NAME = "_placeholder"
+PLACEHOLDER_POOL_TEMPLATE = """\
+[_placeholder]
+user = nobody
+group = nobody
+listen = {socket}
+listen.mode = 0666
+pm = ondemand
+pm.max_children = 1
+pm.process_idle_timeout = 60s
+"""
+
 
 def socket_path(name: str) -> Path:
     return PHP_FPM_SOCKET_DIR / f"{name}.sock"
@@ -39,17 +59,22 @@ def render_pool(name: str) -> str:
 def sync_pools(php_site_names: Iterable[str]) -> None:
     """Schreibt fuer jede PHP-faehige Site (aktuell: WordPress) einen eigenen
     PHP-FPM-Pool und stoesst einen Reload an. Pools von geloeschten/nicht
-    mehr PHP-faehigen Sites werden entfernt."""
+    mehr PHP-faehigen Sites werden entfernt. Schreibt immer zusaetzlich den
+    Platzhalter-Pool (siehe PLACEHOLDER_POOL_NAME), damit PHP-FPM auch ganz
+    ohne WordPress-Sites startfaehig bleibt."""
     names = sorted(set(php_site_names))
 
     PHP_FPM_POOL_DIR.mkdir(parents=True, exist_ok=True)
     PHP_FPM_SOCKET_DIR.mkdir(parents=True, exist_ok=True)
 
-    wanted_files = {f"{name}.conf" for name in names}
+    wanted_files = {f"{name}.conf" for name in names} | {f"{PLACEHOLDER_POOL_NAME}.conf"}
     for existing in PHP_FPM_POOL_DIR.glob("*.conf"):
         if existing.name not in wanted_files:
             existing.unlink()
 
+    (PHP_FPM_POOL_DIR / f"{PLACEHOLDER_POOL_NAME}.conf").write_text(
+        PLACEHOLDER_POOL_TEMPLATE.format(socket=socket_path(PLACEHOLDER_POOL_NAME))
+    )
     for name in names:
         (PHP_FPM_POOL_DIR / f"{name}.conf").write_text(render_pool(name))
 
