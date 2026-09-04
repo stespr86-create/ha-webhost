@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.17
+
+- **Fix: PHP-FPM startete seit 0.1.16 gar nicht mehr** ("unknown entry
+  'pid'", "failed to load configuration file"). Der `pid`-Eintrag wurde ans
+  Ende der php-fpm.conf angehängt statt davor - da `include=` inline
+  verarbeitet wird, landete `pid` dadurch physisch hinter den eingebundenen
+  Pool-Dateien, also im Abschnitt des zuletzt geladenen Pools statt in
+  `[global]` (wo `pid` gültig ist). Jetzt wird die Zeile korrekt vor
+  `include=` eingefügt.
+
 ## 0.1.16
 
 - **Fix: PHP-FPM-Boot-Crashloop seit 0.1.15.** PHP-FPM verweigert den Start

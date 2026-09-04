@@ -28,10 +28,15 @@ RUN curl -o /usr/local/bin/wp https://raw.githubusercontent.com/wp-cli/builds/gh
 # analog zur Caddyfile - siehe core/config.py PHP_FPM_POOL_DIR) und eine
 # feste PID-Datei setzen, damit die App per SIGUSR2 einen Reload ausloesen
 # kann, ohne laufende Requests abzubrechen.
+# WICHTIG: "pid" muss VOR der include=-Zeile stehen, nicht ans Dateiende
+# angehaengt werden - "include=" wird inline verarbeitet, ein einfaches
+# Anhaengen landet dadurch physisch HINTER den eingebundenen Pool-Dateien
+# und damit im Abschnitt des zuletzt eingebundenen Pools statt in [global]
+# ("unknown entry 'pid'", da pid dort keine gueltige Pool-Direktive ist).
 RUN rm -f /etc/php82/php-fpm.d/www.conf \
     && sed -i '/^pid = /d' /etc/php82/php-fpm.conf \
-    && sed -i 's#^include=.*#include=/data/php-fpm-pools/*.conf#' /etc/php82/php-fpm.conf \
-    && echo 'pid = /run/php-fpm.pid' >> /etc/php82/php-fpm.conf
+    && sed -i '/^include=/i pid = /run/php-fpm.pid' /etc/php82/php-fpm.conf \
+    && sed -i 's#^include=.*#include=/data/php-fpm-pools/*.conf#' /etc/php82/php-fpm.conf
 
 WORKDIR /app
 
