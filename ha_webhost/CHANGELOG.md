@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.34
+
+- **Neu: Deutsches Sprachpaket für WordPress.** Neuer Endpunkt
+  `POST /api/sites/{name}/language` (Standard: `de_DE`) installiert und
+  aktiviert per wp-cli ein Sprachpaket - übersetzt wp-admin und alle
+  Core-Standardtexte.
+- Neue WordPress-Sites werden ab sofort direkt mit `--locale=de_DE`
+  installiert (`wp core install` lädt das Sprachpaket dabei automatisch
+  selbst nach) - passend dazu, dass sich HA WebHost ausschließlich an
+  deutschsprachige Nutzer richtet.
+
 ## 0.1.33
 
 - **Fix: Login-Redirect landete NACH erfolgreichem WordPress-Login erneut

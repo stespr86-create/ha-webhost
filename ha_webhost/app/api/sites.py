@@ -289,6 +289,28 @@ def install_wordpress_updates(
         raise HTTPException(422, f"Update-Installation fehlgeschlagen: {str(exc)}") from exc
 
 
+@router.post("/{name}/language", response_model=dict)
+def install_wordpress_language(name: str, locale: str = "de_DE", session: Session = Depends(get_session)):
+    """Installiert und aktiviert ein Sprachpaket (Standard: Deutsch/de_DE)
+    für eine WordPress-Site - übersetzt wp-admin und alle Core-Texte."""
+    site = site_service.get_site(session, name)
+    if not site:
+        raise HTTPException(404, f"Site '{name}' nicht gefunden.")
+    if site.source_type != SourceType.wordpress:
+        raise HTTPException(400, "Nur WordPress-Sites haben Sprachpakete.")
+
+    try:
+        site_dir = SITES_DIR / name
+        result = wordpress_updates_service.install_language(site_dir, locale)
+        if result.get("status") != "success":
+            raise HTTPException(422, f"Sprachpaket-Installation fehlgeschlagen: {result.get('error')}")
+        return {"site": name, **result}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(422, f"Sprachpaket-Installation fehlgeschlagen: {str(exc)}") from exc
+
+
 @router.post("/{name}/backup", response_model=dict)
 def backup_wordpress(name: str, session: Session = Depends(get_session)):
     """Erstellt ein Backup einer WordPress-Site (Dateien + Datenbank)."""

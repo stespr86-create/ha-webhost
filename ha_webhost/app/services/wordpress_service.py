@@ -230,12 +230,17 @@ def wp_cli_install(
             f"--admin_user={admin_user}",
             f"--admin_password={admin_password}",
             f"--admin_email={admin_email}",
+            # HA WebHost richtet sich ausschliesslich an deutschsprachige
+            # Nutzer (siehe DOCS.md/Admin-Panel) - wp-cli laedt das
+            # Sprachpaket bei abweichender --locale automatisch selbst nach
+            # (kein separater "wp language core install"-Schritt noetig).
+            "--locale=de_DE",
             "--skip-email",
             "--allow-root",
         ],
         cwd=site_dir,
         capture_output=True,
-        timeout=60,
+        timeout=90,
     )
     if result.returncode != 0:
         raise RuntimeError(f"wp core install fehlgeschlagen: {result.stderr.decode().strip()}")

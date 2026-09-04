@@ -55,6 +55,30 @@ def check_wordpress_updates(site_dir: Path) -> dict:
         return {"error": str(e)}
 
 
+def install_language(site_dir: Path, locale: str = "de_DE") -> dict:
+    """Installiert und aktiviert ein WordPress-Sprachpaket (z.B. "de_DE" für
+    Deutsch) über wp-cli - übersetzt damit sowohl die wp-admin-Oberfläche
+    als auch alle Core-Standardtexte des Frontends. Plugins/Themes mit
+    eigener .mo-Datei für die gewählte Sprache werden automatisch mit
+    übersetzt, wp-cli lädt deren Sprachdateien bei Bedarf separat nach
+    ("wp language plugin/theme update") - hier bewusst nicht Teil dieser
+    Funktion, da das nur bei bereits installierten Plugins/Themes sinnvoll
+    ist und sonst nur eine leere No-Op-Warnung erzeugt."""
+    try:
+        result = subprocess.run(
+            ["wp", "language", "core", "install", locale, "--activate", "--allow-root"],
+            cwd=site_dir,
+            capture_output=True,
+            timeout=60,
+        )
+        if result.returncode != 0:
+            return {"status": "error", "error": result.stderr.decode(errors="replace").strip()}
+        return {"status": "success", "locale": locale}
+    except Exception as e:
+        logger.error(f"Fehler bei Sprachpaket-Installation ({locale}): {e}")
+        return {"status": "error", "error": str(e)}
+
+
 def install_wordpress_updates(site_dir: Path, update_core: bool = True, update_plugins: bool = True, update_themes: bool = True) -> dict:
     """Installiert WordPress-Updates mit wp-cli."""
     results = {}
